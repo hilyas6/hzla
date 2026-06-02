@@ -1,3 +1,5 @@
+export const runtime = "edge";
+
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 const SYSTEM_PROMPT = `You are a fake job posting detector. Analyse the job posting provided and return a JSON object with your analysis.
