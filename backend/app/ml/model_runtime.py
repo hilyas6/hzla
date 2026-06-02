@@ -1,4 +1,4 @@
-# model_runtime.py — TextGCN inference service, loaded once via @st.cache_resource
+# model_runtime.py — TextGCN inference service
 from __future__ import annotations
 
 import re
@@ -13,7 +13,6 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import streamlit as st
 
 try:
     import shap
@@ -472,13 +471,3 @@ class ImprovedTextGCNService:
             shap_error=None,
             mode=mode,
         )
-
-
-# Cached loader called once per Streamlit session
-@st.cache_resource(show_spinner=True)
-def load_model() -> ImprovedTextGCNService:
-    _detector_dir = Path(__file__).resolve().parent
-    return ImprovedTextGCNService(
-        model_dir=_detector_dir / "models" / "textgcn_tuned",
-        metrics_path=_detector_dir / "reports" / "tuned" / "metrics_textgcn_tuned.csv",
-    )

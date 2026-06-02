@@ -1,4 +1,5 @@
-streamlit
+fastapi
+uvicorn[standard]
 torch
 torch-geometric
 numpy
@@ -6,4 +7,4 @@ pandas
 scikit-learn
 joblib
 shap
-plotly
+pydantic-settings
