@@ -81,10 +81,9 @@ export async function POST(request: Request) {
     });
 
     if (!res.ok) {
-      const err = await res.json().catch(() => null);
-      console.error("Groq API error:", res.status, err);
+      const errBody = await res.text().catch(() => "no body");
       return Response.json(
-        { error: "Analysis failed. Please try again." },
+        { error: `Groq API returned ${res.status}: ${errBody}` },
         { status: 502 }
       );
     }
@@ -94,10 +93,10 @@ export async function POST(request: Request) {
     const analysis = JSON.parse(text);
 
     return Response.json(analysis);
-  } catch (err) {
-    console.error("Detector API error:", err);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
     return Response.json(
-      { error: "Analysis failed. Please try again." },
+      { error: `Server error: ${message}` },
       { status: 500 }
     );
   }
