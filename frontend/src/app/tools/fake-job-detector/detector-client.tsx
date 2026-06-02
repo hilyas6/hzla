@@ -318,7 +318,7 @@ export function DetectorClient() {
                     <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                       Powered by
                     </p>
-                    <p className="mt-1 text-lg font-bold">Gemini Flash</p>
+                    <p className="mt-1 text-lg font-bold">Llama 3.3 70B</p>
                     <p className="text-[11px] text-muted-foreground">
                       AI-powered analysis
                     </p>

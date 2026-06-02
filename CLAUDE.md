@@ -28,20 +28,20 @@ Single Next.js 16 app (App Router) with TypeScript, Tailwind CSS v4, and shadcn/
 - `src/app/tools/fake-job-detector/detector-client.tsx` — Client component (form, results UI, API calls)
 
 ### API Routes
-- `src/app/api/detector/route.ts` — POST endpoint that calls Gemini 2.0 Flash to analyse job postings. Returns structured JSON: verdict, risk score, fraud/legit signals, categorised patterns, structural checklist, plain English summary. The API key is in `.env.local` (not committed).
+- `src/app/api/detector/route.ts` — POST endpoint that calls Groq (Llama 3.3 70B) to analyse job postings. Returns structured JSON: verdict, risk score, fraud/legit signals, categorised patterns, structural checklist, plain English summary. The API key is in `.env.local` (not committed).
 
 ### Components
 - `src/components/navbar.tsx`, `footer.tsx`, `tool-card.tsx` — Shared layout
 - `src/components/ui/` — shadcn/ui primitives (button, card, badge, tabs, input, textarea, etc.)
 
 ### Environment Variables
-- `GEMINI_API_KEY` — Google AI Studio API key (set in `.env.local` locally, or as env var on Cloudflare Pages)
+- `GROQ_API_KEY` — Groq API key (set in `.env.local` locally, or as secret on Cloudflare Pages)
 
 ## Deployment
 
-Deploys to **Cloudflare Pages** (or any Next.js host). No separate backend needed — the Gemini API is called from a Next.js route handler.
+Deploys to **Cloudflare Pages** (Next.js 15 with `@cloudflare/next-on-pages`). No separate backend needed — the Groq API is called from a Next.js edge route handler.
 
-Set `GEMINI_API_KEY` as an environment variable in your hosting provider's dashboard.
+Set `GROQ_API_KEY` as a secret in Cloudflare Pages dashboard.
 
 ## Adding a New Tool
 
