@@ -41,23 +41,26 @@ export default function Home() {
     <div className="mx-auto max-w-6xl px-6">
       {/* Hero */}
       <section className="flex flex-col items-center pt-24 pb-20 text-center">
-        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/50 px-4 py-1.5 text-xs font-medium text-muted-foreground">
+        <div className="mb-6 inline-flex items-center gap-2 border border-[var(--neon-cyan)]/40 bg-[color-mix(in_srgb,var(--neon-cyan)_8%,transparent)] px-4 py-1.5 font-mono text-xs uppercase tracking-widest text-neon-cyan [clip-path:var(--clip-poly-sm)]">
           <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--neon-cyan)] opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--neon-cyan)]" />
           </span>
           Open-source &middot; Free to use
         </div>
 
-        <h1 className="max-w-3xl text-5xl font-extrabold tracking-tight sm:text-6xl">
+        <h1 className="max-w-3xl font-display text-4xl font-black uppercase tracking-tight sm:text-6xl">
           AI-powered tools for
-          <span className="bg-gradient-to-r from-neutral-500 to-neutral-900 bg-clip-text text-transparent dark:from-neutral-400 dark:to-white">
-            {" "}
+          <br />
+          <span
+            data-text="smarter job hunting"
+            className="glitch glow-text-yellow bg-gradient-to-r from-[var(--neon-yellow)] via-[var(--neon-yellow)] to-[var(--neon-pink)] bg-clip-text text-transparent"
+          >
             smarter job hunting
           </span>
         </h1>
 
-        <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground">
+        <p className="mt-6 max-w-xl font-heading text-lg leading-relaxed text-muted-foreground">
           HZLA is a growing collection of tools that help you spot scams, stay
           organised, and save time throughout your job search.
         </p>
@@ -65,8 +68,8 @@ export default function Home() {
 
       {/* Tool Grid */}
       <section className="pb-28">
-        <h2 className="mb-8 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-          Tools
+        <h2 className="mb-8 font-mono text-sm uppercase tracking-widest text-neon-cyan">
+          <span className="text-muted-foreground">&#47;&#47;</span> Tools
         </h2>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {tools.map((tool) => (

@@ -6,6 +6,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { HudCorners } from "@/components/hud-corners";
 
 interface ToolCardProps {
   title: string;
@@ -25,30 +26,43 @@ export function ToolCard({
   const isLive = status === "live";
 
   const content = (
-    <Card
-      className={`group relative overflow-hidden transition-all duration-300 ${
-        isLive
-          ? "hover:shadow-lg hover:-translate-y-0.5 cursor-pointer"
-          : "opacity-60 cursor-default"
-      }`}
-    >
-      <CardHeader className="space-y-3">
-        <div className="flex items-start justify-between">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-muted text-foreground">
-            {icon}
+    <div className={isLive ? "gradient-spin-border" : undefined}>
+      <Card
+        className={`group relative transition-all duration-300 ${
+          isLive
+            ? "cursor-pointer hover:-translate-y-1 hover:ring-[var(--neon-cyan)]/40"
+            : "cursor-default opacity-50"
+        }`}
+      >
+        <HudCorners
+          className={
+            isLive ? "border-neon-cyan" : "border-muted-foreground/30"
+          }
+        />
+        <CardHeader className="space-y-3">
+          <div className="flex items-start justify-between">
+            <div
+              className={`flex h-11 w-11 items-center justify-center [clip-path:var(--clip-poly-sm)] ${
+                isLive
+                  ? "bg-[color-mix(in_srgb,var(--neon-cyan)_14%,transparent)] text-neon-cyan"
+                  : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {icon}
+            </div>
+            <Badge variant={isLive ? "default" : "secondary"}>
+              {isLive ? "Live" : "Soon"}
+            </Badge>
           </div>
-          <Badge variant={isLive ? "default" : "secondary"}>
-            {isLive ? "Live" : "Coming Soon"}
-          </Badge>
-        </div>
-        <div>
-          <CardTitle className="text-base">{title}</CardTitle>
-          <CardDescription className="mt-1.5 text-sm leading-relaxed">
-            {description}
-          </CardDescription>
-        </div>
-      </CardHeader>
-    </Card>
+          <div>
+            <CardTitle className="text-base">{title}</CardTitle>
+            <CardDescription className="mt-1.5 text-sm leading-relaxed">
+              {description}
+            </CardDescription>
+          </div>
+        </CardHeader>
+      </Card>
+    </div>
   );
 
   if (!isLive) return content;

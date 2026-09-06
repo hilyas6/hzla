@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { HudCorners } from "@/components/hud-corners";
 import {
   Loader2,
   AlertTriangle,
@@ -67,12 +68,12 @@ const EXAMPLES = {
 function riskColor(prob: number) {
   if (prob >= 0.65) return "text-red-500";
   if (prob >= 0.4) return "text-yellow-500";
-  return "text-emerald-500";
+  return "text-[var(--neon-green)]";
 }
 
 function reliabilityColor(bucket: string) {
   if (bucket === "High")
-    return "text-emerald-500 bg-emerald-500/10 border-emerald-500/30";
+    return "text-[var(--neon-green)] bg-[var(--neon-green)]/10 border-[var(--neon-green)]/30";
   if (bucket === "Medium")
     return "text-yellow-500 bg-yellow-500/10 border-yellow-500/30";
   return "text-red-500 bg-red-500/10 border-red-500/30";
@@ -239,22 +240,27 @@ export function DetectorClient() {
           <>
             {/* Verdict Card */}
             <Card
-              className={`border-l-4 ${
-                isFake ? "border-l-red-500" : "border-l-emerald-500"
+              className={`relative border-l-4 ${
+                isFake
+                  ? "border-l-red-500 shadow-[0_0_24px_-6px_rgba(255,37,71,0.35)]"
+                  : "border-l-[var(--neon-green)] shadow-neon-green"
               }`}
             >
+              <HudCorners
+                className={isFake ? "border-red-500/60" : "border-neon-green"}
+              />
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     {isFake ? (
                       <AlertTriangle className="h-6 w-6 text-red-500" />
                     ) : (
-                      <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+                      <CheckCircle2 className="h-6 w-6 text-[var(--neon-green)]" />
                     )}
                     <div>
                       <p
                         className={`text-lg font-bold ${
-                          isFake ? "text-red-500" : "text-emerald-500"
+                          isFake ? "text-red-500" : "text-[var(--neon-green)]"
                         }`}
                       >
                         {isFake ? "Likely Fraudulent" : "Likely Legitimate"}
@@ -282,9 +288,9 @@ export function DetectorClient() {
                       {pct}%
                     </span>
                   </div>
-                  <div className="relative h-3 w-full rounded-full bg-gradient-to-r from-emerald-400 via-yellow-400 to-red-400">
+                  <div className="relative h-3 w-full rounded-full bg-gradient-to-r from-[var(--neon-green)] via-yellow-400 to-red-400 shadow-[0_0_14px_-2px_rgba(0,240,255,0.25)]">
                     <div
-                      className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 h-5 w-5 rounded-full border-2 border-white bg-foreground shadow-md transition-all duration-500"
+                      className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 h-5 w-5 rounded-full border-2 border-background bg-foreground shadow-[0_0_12px_rgba(255,255,255,0.6)] transition-all duration-500"
                       style={{
                         left: `${Math.max(2, Math.min(98, pct))}%`,
                       }}
@@ -314,11 +320,13 @@ export function DetectorClient() {
                       {analysis.confidence_reasoning}
                     </p>
                   </div>
-                  <div className="rounded-lg border bg-muted/50 p-3">
+                  <div className="rounded-lg border border-[var(--neon-cyan)]/20 bg-muted/50 p-3">
                     <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                       Powered by
                     </p>
-                    <p className="mt-1 text-lg font-bold">GPT-OSS 120B</p>
+                    <p className="mt-1 font-display text-lg font-bold text-neon-cyan">
+                      GPT-OSS 120B
+                    </p>
                     <p className="text-[11px] text-muted-foreground">
                       AI-powered analysis
                     </p>
@@ -327,7 +335,7 @@ export function DetectorClient() {
 
                 {/* Missing Fields */}
                 {analysis.missing_fields.length > 0 && (
-                  <div className="mt-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-600 dark:text-yellow-400">
+                  <div className="mt-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-400">
                     <strong>Missing details:</strong>{" "}
                     {analysis.missing_fields.join(", ")} — adding these may
                     improve accuracy.
@@ -358,7 +366,7 @@ export function DetectorClient() {
                       className={`rounded-lg border-l-4 p-4 text-sm leading-relaxed ${
                         isFake
                           ? "border-l-red-500 bg-red-500/5"
-                          : "border-l-emerald-500 bg-emerald-500/5"
+                          : "border-l-[var(--neon-green)] bg-[var(--neon-green)]/5"
                       }`}
                     >
                       {analysis.plain_english_summary}
@@ -378,7 +386,7 @@ export function DetectorClient() {
                                 className={`rounded-lg border p-4 ${
                                   isFraud
                                     ? "border-red-500/20 bg-red-500/5"
-                                    : "border-emerald-500/20 bg-emerald-500/5"
+                                    : "border-[var(--neon-green)]/20 bg-[var(--neon-green)]/5"
                                 }`}
                               >
                                 <div className="flex items-center gap-2 mb-2">
@@ -391,7 +399,7 @@ export function DetectorClient() {
                                       className={`text-[10px] font-semibold uppercase tracking-wider ${
                                         isFraud
                                           ? "text-red-500"
-                                          : "text-emerald-500"
+                                          : "text-[var(--neon-green)]"
                                       }`}
                                     >
                                       {isFraud
@@ -411,7 +419,7 @@ export function DetectorClient() {
                                       className={`text-[11px] ${
                                         isFraud
                                           ? "border-red-500/30 text-red-500"
-                                          : "border-emerald-500/30 text-emerald-500"
+                                          : "border-[var(--neon-green)]/30 text-[var(--neon-green)]"
                                       }`}
                                     >
                                       {t}
@@ -451,7 +459,7 @@ export function DetectorClient() {
 
                     {analysis.signals.legit_signals.length > 0 && (
                       <div>
-                        <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-emerald-500">
+                        <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--neon-green)]">
                           <ArrowDown className="h-4 w-4" />
                           Legitimacy Signals
                         </p>
@@ -482,7 +490,7 @@ export function DetectorClient() {
                           key={check.label}
                           className={`flex items-start gap-3 rounded-lg border p-3 ${
                             check.pass
-                              ? "border-emerald-500/20 bg-emerald-500/5"
+                              ? "border-[var(--neon-green)]/20 bg-[var(--neon-green)]/5"
                               : "border-red-500/20 bg-red-500/5"
                           }`}
                         >
@@ -551,7 +559,7 @@ function SignalRow({
           className={`text-[10px] ml-auto ${
             variant === "fraud"
               ? "border-red-500/30 text-red-500"
-              : "border-emerald-500/30 text-emerald-500"
+              : "border-[var(--neon-green)]/30 text-[var(--neon-green)]"
           }`}
         >
           {(signal.impact * 100).toFixed(0)}% impact
@@ -560,7 +568,7 @@ function SignalRow({
       <div className="relative h-1.5 w-full rounded-full bg-muted mb-1.5">
         <div
           className={`absolute inset-y-0 left-0 rounded-full ${
-            variant === "fraud" ? "bg-red-500/60" : "bg-emerald-500/60"
+            variant === "fraud" ? "bg-red-500/60" : "bg-[var(--neon-green)]/60"
           }`}
           style={{ width: `${width}%` }}
         />
