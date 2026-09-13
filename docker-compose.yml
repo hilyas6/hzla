@@ -1,0 +1,29 @@
+services:
+  app:
+    build:
+      context: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgres://hzla:hzla@postgres:5432/hzla
+      AUTH_TRUST_HOST: "true"
+      AUTH_SECRET: ${AUTH_SECRET}
+      AUTH_URL: ${AUTH_URL}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: hzla
+      POSTGRES_PASSWORD: hzla
+      POSTGRES_DB: hzla
+    volumes:
+      - hzla-postgres-data:/var/lib/postgresql/data
+      - ./frontend/src/lib/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    restart: unless-stopped
+
+volumes:
+  hzla-postgres-data:

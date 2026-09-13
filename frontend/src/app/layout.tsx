@@ -3,6 +3,7 @@ import { Geist, Rajdhani, Orbitron, Share_Tech_Mono } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
+import { Providers } from "@/components/providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -62,9 +63,11 @@ export default function RootLayout({
           <div className="scan-beam absolute" />
           <div className="scanline-overlay absolute inset-0" />
         </div>
-        <Navbar />
-        <main className="relative z-10 flex-1">{children}</main>
-        <Footer />
+        <Providers>
+          <Navbar />
+          <main className="relative z-10 flex-1">{children}</main>
+          <Footer />
+        </Providers>
       </body>
     </html>
   );

@@ -1,6 +1,10 @@
+"use client";
+
 import Link from "next/link";
+import { useSession, signOut } from "next-auth/react";
 
 export function Navbar() {
+  const { data: session } = useSession();
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[var(--neon-cyan)]/15 bg-background/85 backdrop-blur-xl">
       <div className="absolute inset-x-0 bottom-[-1px] h-px bg-gradient-to-r from-transparent via-[var(--neon-cyan)]/70 to-transparent" />
@@ -30,6 +34,29 @@ export function Navbar() {
           >
             GitHub
           </Link>
+          {session ? (
+            <>
+              <Link
+                href="/dashboard"
+                className="transition hover:text-neon-cyan hover:glow-text-cyan"
+              >
+                Dashboard
+              </Link>
+              <button
+                onClick={() => signOut({ callbackUrl: "/" })}
+                className="transition hover:text-neon-cyan hover:glow-text-cyan"
+              >
+                Log Out
+              </button>
+            </>
+          ) : (
+            <Link
+              href="/login"
+              className="transition hover:text-neon-cyan hover:glow-text-cyan"
+            >
+              Log In
+            </Link>
+          )}
           <span className="hidden items-center gap-2 border border-[var(--neon-green)]/40 px-2.5 py-1 text-[10px] text-neon-green sm:flex [clip-path:var(--clip-poly-sm)]">
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--neon-green)] opacity-75" />

@@ -29,19 +29,39 @@ Single Next.js 16 app (App Router) with TypeScript, Tailwind CSS v4, and shadcn/
 
 ### API Routes
 - `src/app/api/detector/route.ts` — POST endpoint that calls Groq (Llama 3.3 70B) to analyse job postings. Returns structured JSON: verdict, risk score, fraud/legit signals, categorised patterns, structural checklist, plain English summary. The API key is in `.env.local` (not committed).
+- `src/app/api/auth/[...nextauth]/route.ts` — Auth.js (NextAuth v5) handlers. Credentials (email/password) login, JWT sessions.
+- `src/app/api/auth/signup/route.ts` — Creates a user (hashed password via bcryptjs) in Postgres.
+
+### Auth
+- `src/auth.ts` — Auth.js config: Credentials provider, `role` carried through the JWT/session.
+- `src/lib/db.ts` — `pg.Pool` singleton (`DATABASE_URL`).
+- `src/lib/schema.sql` — `users` table DDL (id, email, password_hash, role, created_at). Applied via Postgres container init on first boot.
+- `src/middleware.ts` — protects `/dashboard` (logged in) and `/admin` (role === 'admin').
 
 ### Components
 - `src/components/navbar.tsx`, `footer.tsx`, `tool-card.tsx` — Shared layout
+- `src/components/providers.tsx` — wraps the app in Auth.js `SessionProvider`
 - `src/components/ui/` — shadcn/ui primitives (button, card, badge, tabs, input, textarea, etc.)
 
 ### Environment Variables
-- `GROQ_API_KEY` — Groq API key (set in `.env.local` locally, or as secret on Cloudflare Pages)
+- `GROQ_API_KEY` — Groq API key
+- `DATABASE_URL` — Postgres connection string
+- `AUTH_SECRET` — Auth.js session signing secret (`openssl rand -base64 32`)
+- `AUTH_TRUST_HOST` — must be `true` when self-hosting behind a reverse proxy/tunnel
+- `AUTH_URL` — public URL of the site
+
+Set locally in `frontend/.env.local` (see `frontend/.env.example`), or via `.env` at the repo root for `docker compose`.
 
 ## Deployment
 
-Deploys to **Cloudflare Pages** (Next.js 15 with `@cloudflare/next-on-pages`). No separate backend needed — the Groq API is called from a Next.js edge route handler.
+Self-hosted via Docker on a home server (CasaOS), not Cloudflare Pages — the login system needs a real Postgres connection, which Cloudflare's edge runtime can't hold over raw TCP without extra bridging.
 
-Set `GROQ_API_KEY` as a secret in Cloudflare Pages dashboard.
+`docker-compose.yml` at the repo root runs the app (`frontend/Dockerfile`, multi-stage build off `output: "standalone"`) alongside a `postgres:16-alpine` container. The app is exposed to the internet via a Cloudflare Tunnel pointed at the CasaOS box, so the domain still gets Cloudflare's SSL/CDN without opening any ports.
+
+```bash
+cp frontend/.env.example .env   # fill in DATABASE_URL, AUTH_SECRET, AUTH_URL, GROQ_API_KEY
+docker compose up -d --build
+```
 
 ## Adding a New Tool
 
