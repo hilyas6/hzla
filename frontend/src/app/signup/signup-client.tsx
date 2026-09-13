@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,25 +27,13 @@ export function SignupClient() {
     });
     const data = await res.json();
 
+    setLoading(false);
     if (!res.ok) {
       setError(data.error ?? "Something went wrong.");
-      setLoading(false);
       return;
     }
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
-
-    setLoading(false);
-    if (result?.error) {
-      setError("Account created, but login failed. Try logging in.");
-      return;
-    }
-    router.push("/dashboard");
-    router.refresh();
+    router.push("/login");
   }
 
   return (
