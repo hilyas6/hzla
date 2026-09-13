@@ -1,5 +1,6 @@
 import { ToolCard } from "@/components/tool-card";
 import { ShieldCheck, FileText, Wand2, Wrench } from "lucide-react";
+import { auth } from "@/auth";
 
 const tools = [
   {
@@ -9,6 +10,7 @@ const tools = [
     href: "/tools/fake-job-detector",
     icon: <ShieldCheck className="h-5 w-5" />,
     status: "live" as const,
+    requiresAuth: true,
   },
   {
     title: "Application Tracker",
@@ -36,7 +38,9 @@ const tools = [
   },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const session = await auth();
+
   return (
     <div className="mx-auto max-w-6xl px-6">
       {/* Hero */}
@@ -73,7 +77,13 @@ export default function Home() {
         </h2>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {tools.map((tool) => (
-            <ToolCard key={tool.title} {...tool} />
+            <ToolCard
+              key={tool.title}
+              {...tool}
+              status={
+                tool.requiresAuth && !session ? "locked" : tool.status
+              }
+            />
           ))}
         </div>
       </section>

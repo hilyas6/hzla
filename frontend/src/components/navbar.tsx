@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
+import { CircleUserRound } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export function Navbar() {
   const { data: session } = useSession();
@@ -35,27 +37,22 @@ export function Navbar() {
             GitHub
           </Link>
           {session ? (
-            <>
-              <Link
-                href="/dashboard"
-                className="transition hover:text-neon-cyan hover:glow-text-cyan"
-              >
-                Dashboard
-              </Link>
-              <button
-                onClick={() => signOut({ callbackUrl: "/" })}
-                className="transition hover:text-neon-cyan hover:glow-text-cyan"
-              >
-                Log Out
-              </button>
-            </>
-          ) : (
             <Link
-              href="/login"
-              className="transition hover:text-neon-cyan hover:glow-text-cyan"
+              href="/dashboard"
+              aria-label="Dashboard"
+              className="flex items-center text-foreground transition hover:text-neon-cyan hover:glow-text-cyan"
             >
-              Log In
+              <CircleUserRound className="h-5 w-5" />
             </Link>
+          ) : (
+            <div className="flex items-center gap-2 normal-case">
+              <Button render={<Link href="/login" />} variant="outline" size="sm">
+                Log In
+              </Button>
+              <Button render={<Link href="/signup" />} size="sm">
+                Sign Up
+              </Button>
+            </div>
           )}
           <span className="hidden items-center gap-2 border border-[var(--neon-green)]/40 px-2.5 py-1 text-[10px] text-neon-green sm:flex [clip-path:var(--clip-poly-sm)]">
             <span className="relative flex h-1.5 w-1.5">

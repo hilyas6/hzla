@@ -10,17 +10,21 @@ export default auth((req) => {
   const { pathname } = req.nextUrl;
   const role = req.auth?.user?.role;
 
-  if (pathname.startsWith("/admin")) {
+  if (pathname.startsWith("/api/admin")) {
     if (role !== "admin") {
-      const url = req.auth
-        ? new URL("/dashboard", req.nextUrl.origin)
-        : new URL("/login", req.nextUrl.origin);
-      return NextResponse.redirect(url);
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     return NextResponse.next();
   }
 
-  if (pathname.startsWith("/dashboard") && !req.auth) {
+  if (pathname.startsWith("/api/")) {
+    if (!req.auth) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    return NextResponse.next();
+  }
+
+  if (!req.auth) {
     return NextResponse.redirect(new URL("/login", req.nextUrl.origin));
   }
 
@@ -28,5 +32,10 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/admin/:path*"],
+  matcher: [
+    "/dashboard/:path*",
+    "/tools/fake-job-detector/:path*",
+    "/api/detector/:path*",
+    "/api/admin/:path*",
+  ],
 };

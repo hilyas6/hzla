@@ -13,7 +13,7 @@ interface ToolCardProps {
   description: string;
   href: string;
   icon: React.ReactNode;
-  status: "live" | "coming-soon";
+  status: "live" | "coming-soon" | "locked";
 }
 
 export function ToolCard({
@@ -24,15 +24,19 @@ export function ToolCard({
   status,
 }: ToolCardProps) {
   const isLive = status === "live";
+  const isLocked = status === "locked";
+  const isClickable = isLive || isLocked;
+  const badgeLabel =
+    status === "live" ? "Live" : status === "locked" ? "Sign Up" : "Soon";
 
   const content = (
     <div className={isLive ? "gradient-spin-border" : undefined}>
       <Card
         className={`group relative transition-all duration-300 ${
-          isLive
+          isClickable
             ? "cursor-pointer hover:-translate-y-1 hover:ring-[var(--neon-cyan)]/40"
-            : "cursor-default opacity-50"
-        }`}
+            : "cursor-default"
+        } ${isLive ? "" : "opacity-50"}`}
       >
         <HudCorners
           className={
@@ -51,7 +55,7 @@ export function ToolCard({
               {icon}
             </div>
             <Badge variant={isLive ? "default" : "secondary"}>
-              {isLive ? "Live" : "Soon"}
+              {badgeLabel}
             </Badge>
           </div>
           <div>
@@ -65,6 +69,6 @@ export function ToolCard({
     </div>
   );
 
-  if (!isLive) return content;
-  return <Link href={href}>{content}</Link>;
+  if (!isClickable) return content;
+  return <Link href={isLocked ? "/signup" : href}>{content}</Link>;
 }

@@ -31,17 +31,19 @@ Single Next.js 16 app (App Router) with TypeScript, Tailwind CSS v4, and shadcn/
 - `src/app/api/detector/route.ts` — POST endpoint that calls Groq (Llama 3.3 70B) to analyse job postings. Returns structured JSON: verdict, risk score, fraud/legit signals, categorised patterns, structural checklist, plain English summary. The API key is in `.env.local` (not committed).
 - `src/app/api/auth/[...nextauth]/route.ts` — Auth.js (NextAuth v5) handlers. Credentials (email/password) login, JWT sessions.
 - `src/app/api/auth/signup/route.ts` — Creates a user (hashed password via bcryptjs) in Postgres.
+- `src/app/api/admin/users/route.ts` — GET, lists all users (admin only).
+- `src/app/api/admin/users/[id]/route.ts` — PATCH (change role), DELETE (remove user); admin only, can't act on your own account for delete.
 
 ### Auth
-- `src/auth.ts` — Auth.js config: Credentials provider, `role` carried through the JWT/session.
+- `src/auth.ts` — Auth.js config: Credentials provider, `id`/`role` carried through the JWT/session.
 - `src/lib/db.ts` — `pg.Pool` singleton (`DATABASE_URL`).
 - `src/lib/schema.sql` — `users` table DDL (id, email, password_hash, role, created_at). Applied via Postgres container init on first boot.
-- `src/middleware.ts` — protects `/dashboard` (logged in) and `/admin` (role === 'admin').
+- `src/middleware.ts` — requires login for `/dashboard`, `/tools/fake-job-detector`, `/api/detector`; requires `role === 'admin'` for `/api/admin/*`. `/dashboard` itself branches by role — admins see `AdminPanel` (user management), everyone else sees their tool access.
 
 ### Components
-- `src/components/navbar.tsx`, `footer.tsx`, `tool-card.tsx` — Shared layout
+- `src/components/navbar.tsx`, `footer.tsx`, `tool-card.tsx` — Shared layout. Navbar shows a profile icon → `/dashboard` when logged in, Sign Up/Log In buttons otherwise. `ToolCard` has a `locked` status (dim, links to `/signup`) for auth-gated tools viewed while logged out.
 - `src/components/providers.tsx` — wraps the app in Auth.js `SessionProvider`
-- `src/components/ui/` — shadcn/ui primitives (button, card, badge, tabs, input, textarea, etc.)
+- `src/components/ui/` — shadcn/ui primitives (button, card, badge, tabs, input, textarea, etc.) built on `@base-ui/react` — use the `render` prop (not `asChild`) to polymorphically render as another element, e.g. `<Button render={<Link href="/x" />}>`.
 
 ### Environment Variables
 - `GROQ_API_KEY` — Groq API key
