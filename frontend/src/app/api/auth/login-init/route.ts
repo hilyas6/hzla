@@ -1,10 +1,17 @@
-import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { pool } from "@/lib/db";
-import { sendOtpEmail } from "@/lib/email";
+import { issueOtp } from "@/lib/otp";
+import { isRateLimited, clientIp } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   try {
+    if (isRateLimited(`login-init:${clientIp(request)}`, 10, 10 * 60 * 1000)) {
+      return Response.json(
+        { error: "Too many attempts. Try again later." },
+        { status: 429 }
+      );
+    }
+
     const { email, password } = await request.json();
     if (typeof email !== "string" || typeof password !== "string") {
       return Response.json(
@@ -15,7 +22,7 @@ export async function POST(request: Request) {
 
     const normalizedEmail = email.toLowerCase();
     const { rows } = await pool.query(
-      "SELECT id, password_hash FROM users WHERE email = $1",
+      "SELECT id, password_hash, email_verified, two_factor_enabled FROM users WHERE email = $1",
       [normalizedEmail]
     );
     const user = rows[0];
@@ -26,18 +33,17 @@ export async function POST(request: Request) {
       );
     }
 
-    const code = crypto.randomInt(100000, 1000000).toString();
-    const codeHash = crypto.createHash("sha256").update(code).digest("hex");
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    if (!user.email_verified) {
+      await issueOtp(user.id, normalizedEmail);
+      return Response.json({ step: "verify-email" });
+    }
 
-    await pool.query(
-      "UPDATE users SET otp_code_hash = $1, otp_expires_at = $2 WHERE id = $3",
-      [codeHash, expiresAt, user.id]
-    );
+    if (user.two_factor_enabled) {
+      await issueOtp(user.id, normalizedEmail);
+      return Response.json({ step: "otp" });
+    }
 
-    await sendOtpEmail(normalizedEmail, code);
-
-    return Response.json({ ok: true });
+    return Response.json({ step: "none" });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return Response.json(

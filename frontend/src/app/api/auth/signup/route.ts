@@ -1,8 +1,17 @@
 import bcrypt from "bcryptjs";
 import { pool } from "@/lib/db";
+import { issueOtp } from "@/lib/otp";
+import { isRateLimited, clientIp } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   try {
+    if (isRateLimited(`signup:${clientIp(request)}`, 5, 10 * 60 * 1000)) {
+      return Response.json(
+        { error: "Too many attempts. Try again later." },
+        { status: 429 }
+      );
+    }
+
     const { email, password } = await request.json();
 
     if (typeof email !== "string" || typeof password !== "string") {
@@ -31,10 +40,12 @@ export async function POST(request: Request) {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    await pool.query(
-      "INSERT INTO users (email, password_hash) VALUES ($1, $2)",
+    const { rows } = await pool.query(
+      "INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id",
       [normalizedEmail, passwordHash]
     );
+
+    await issueOtp(rows[0].id, normalizedEmail);
 
     return Response.json({ ok: true });
   } catch (err: unknown) {

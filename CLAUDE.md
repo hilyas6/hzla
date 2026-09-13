@@ -30,28 +30,37 @@ Single Next.js 16 app (App Router) with TypeScript, Tailwind CSS v4, and shadcn/
 ### API Routes
 - `src/app/api/detector/route.ts` — POST endpoint that calls Groq (Llama 3.3 70B) to analyse job postings. Returns structured JSON: verdict, risk score, fraud/legit signals, categorised patterns, structural checklist, plain English summary. The API key is in `.env.local` (not committed).
 - `src/app/api/auth/[...nextauth]/route.ts` — Auth.js (NextAuth v5) handlers. Credentials (email/password) login, JWT sessions.
-- `src/app/api/auth/signup/route.ts` — Creates a user (hashed password via bcryptjs) in Postgres.
+- `src/app/api/auth/signup/route.ts` — Creates a user (hashed password via bcryptjs), emails a verification code via `issueOtp`. Rate limited per IP.
+- `src/app/api/auth/verify-email/route.ts` — Confirms the signup code, sets `email_verified = true`. Rate limited per IP.
+- `src/app/api/auth/login-init/route.ts` — Verifies email+password, then tells the client what's next: `"verify-email"` (unverified account, code just sent), `"otp"` (2FA account, code just sent), or `"none"` (go straight to `signIn`). Rate limited per IP.
 - `src/app/api/admin/users/route.ts` — GET, lists all users (admin only).
 - `src/app/api/admin/users/[id]/route.ts` — PATCH (change role), DELETE (remove user); admin only, can't act on your own account for delete.
-- `src/app/api/auth/request-otp/route.ts` — verifies email+password, emails a 6-digit code via Resend (`src/lib/email.ts`), stores its hash on the user row. Public (pre-session), rate limiting not implemented.
+- `src/app/api/account/two-factor/route.ts` — PATCH, toggles `two_factor_enabled` on the logged-in user's own account.
 
 ### Auth
-- `src/auth.ts` — Auth.js config: Credentials provider requires email + password + `otp` together; `authorize()` re-checks the password and verifies the OTP hash/expiry, then clears it (single use). `id`/`role` carried through the JWT/session.
-- Login is two-step client side (`src/app/login/login-client.tsx`): submit email/password → `/api/auth/request-otp` sends the code → submit code alongside the original credentials via `signIn("credentials", ...)`. Signup no longer auto-logs-in; it redirects to `/login` since a session now requires the OTP step.
+- **Signup requires email verification; login is password-only by default.** `two_factor_enabled` (off by default, toggled from the dashboard) is what makes login also require an emailed code — both cases reuse the same `otp_code_hash`/`otp_expires_at` columns and `src/lib/otp.ts` helpers (`issueOtp`, `isOtpValid`).
+- `src/auth.ts` — Auth.js config: Credentials provider always checks email+password; only demands a valid `otp` when `!user.email_verified || user.two_factor_enabled`. `id`/`role` carried through the JWT/session.
+- Login is two-step client side (`src/app/login/login-client.tsx`): submit email/password → `/api/auth/login-init` decides if a code is needed → if so, submit it alongside the original credentials via `signIn("credentials", ...)`. Signup (`src/app/signup/signup-client.tsx`) verifies the code inline, then signs in automatically.
+- `src/lib/email.ts` — `sendOtpEmail` via Resend's HTTP API (`RESEND_API_KEY`/`RESEND_FROM_EMAIL`), same `fetch`-based pattern as the Groq call in the detector route.
+- `src/lib/rate-limit.ts` — in-memory per-IP sliding window (`isRateLimited`); ponytail-flagged as single-process only, fine for one container.
 - `src/lib/db.ts` — `pg.Pool` singleton (`DATABASE_URL`).
-- `src/lib/schema.sql` — `users` table DDL (id, email, password_hash, role, created_at, otp_code_hash, otp_expires_at). Applied via Postgres container init on first boot only — for an already-running DB, migrate manually (see below).
-- `src/middleware.ts` — requires login for `/dashboard`, `/tools/fake-job-detector`, `/api/detector`; requires `role === 'admin'` for `/api/admin/*`. `/dashboard` itself branches by role — admins see `AdminPanel` (user management), everyone else sees their tool access.
+- `src/lib/schema.sql` — `users` table DDL (id, email, password_hash, role, created_at, otp_code_hash, otp_expires_at, email_verified, two_factor_enabled). Applied via Postgres container init on first boot only — for an already-running DB, migrate manually (see below).
+- `src/middleware.ts` — requires login for `/dashboard`, `/tools/fake-job-detector`, `/api/detector`, `/api/account/*`; requires `role === 'admin'` for `/api/admin/*`; rate-limits `/api/auth/callback/credentials` (the actual password check) independent of `login-init`, since that endpoint could be hit directly. `/dashboard` branches by role — admins see `AdminPanel` (user management), everyone gets the `TwoFactorToggle`.
 
 **Migrating an existing deployment's DB** (schema.sql only runs on first container boot):
 ```sql
 ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_code_hash TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_expires_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN NOT NULL DEFAULT false;
+-- existing accounts predate email verification — grandfather them in:
+UPDATE users SET email_verified = true;
 ```
 
 ### Components
 - `src/components/navbar.tsx`, `footer.tsx`, `tool-card.tsx` — Shared layout. Navbar shows a profile icon → `/dashboard` when logged in, Sign Up/Log In buttons otherwise. `ToolCard` has a `locked` status (dim, links to `/signup`) for auth-gated tools viewed while logged out.
 - `src/components/providers.tsx` — wraps the app in Auth.js `SessionProvider`
-- `src/components/ui/` — shadcn/ui primitives (button, card, badge, tabs, input, textarea, etc.) built on `@base-ui/react` — use the `render` prop (not `asChild`) to polymorphically render as another element, e.g. `<Button render={<Link href="/x" />}>`.
+- `src/components/ui/` — shadcn/ui primitives (button, card, badge, tabs, input, textarea, switch, etc.) built on `@base-ui/react` — use the `render` prop (not `asChild`) to polymorphically render as another element, e.g. `<Button render={<Link href="/x" />}>`.
 
 ### Environment Variables
 - `GROQ_API_KEY` — Groq API key
