@@ -34,7 +34,7 @@ export function LoginClient() {
       setError("Invalid or expired code.");
       return;
     }
-    router.push("/dashboard");
+    router.push("/");
     router.refresh();
   }
 

@@ -70,7 +70,7 @@ export function SignupClient() {
       router.push("/login");
       return;
     }
-    router.push("/dashboard");
+    router.push("/");
     router.refresh();
   }
 
