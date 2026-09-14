@@ -15,6 +15,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { resizeImageToJpegDataUrl } from "@/lib/resize-image";
+import { AVATAR_UPDATED_EVENT } from "@/lib/avatar-events";
 
 interface ProfileFormProps {
   initialName: string;
@@ -65,6 +66,7 @@ export function ProfileForm({ initialName, initialAvatarPath }: ProfileFormProps
       if (!res.ok) throw new Error(data.error ?? "Failed to upload image.");
       setAvatarPath(`${data.avatarPath}?t=${Date.now()}`);
       router.refresh();
+      window.dispatchEvent(new Event(AVATAR_UPDATED_EVENT));
     } catch (err) {
       setAvatarError(err instanceof Error ? err.message : "Failed to upload image.");
     } finally {
@@ -83,6 +85,7 @@ export function ProfileForm({ initialName, initialAvatarPath }: ProfileFormProps
     }
     setAvatarPath(null);
     router.refresh();
+    window.dispatchEvent(new Event(AVATAR_UPDATED_EVENT));
   }
 
   return (

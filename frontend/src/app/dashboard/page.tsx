@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import Image from "next/image";
-import { ShieldCheck, CircleUserRound } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { auth } from "@/auth";
 import { pool } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,34 +32,18 @@ export default async function DashboardPage() {
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-4">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted">
-            {avatarPath ? (
-              <Image
-                src={`/api/avatar/${avatarPath}`}
-                alt="Profile picture"
-                width={56}
-                height={56}
-                className="h-full w-full object-cover"
-                unoptimized
-              />
-            ) : (
-              <CircleUserRound className="h-7 w-7 text-muted-foreground" />
-            )}
-          </div>
-          <div className="min-w-0">
-            <h1 className="font-display text-2xl font-black uppercase tracking-wide">
-              Dashboard
-            </h1>
-            {name && (
-              <p className="mt-1 text-sm text-neon-cyan">Welcome back, {name}</p>
-            )}
-            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-muted-foreground">
-              <span className="break-all">{session?.user?.email}</span>
-              <Badge variant={isAdmin ? "default" : "secondary"}>
-                {session?.user?.role}
-              </Badge>
-            </div>
+        <div className="min-w-0">
+          <h1 className="font-display text-2xl font-black uppercase tracking-wide">
+            Dashboard
+          </h1>
+          {name && (
+            <p className="mt-1 text-sm text-neon-cyan">Welcome back, {name}</p>
+          )}
+          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-muted-foreground">
+            <span className="break-all">{session?.user?.email}</span>
+            <Badge variant={isAdmin ? "default" : "secondary"}>
+              {session?.user?.role}
+            </Badge>
           </div>
         </div>
         <LogoutButton />

@@ -1,14 +1,47 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { CircleUserRound, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AVATAR_UPDATED_EVENT } from "@/lib/avatar-events";
+
+function ProfileAvatar({ avatarPath }: { avatarPath: string | null }) {
+  if (!avatarPath) return <CircleUserRound className="h-5 w-5" />;
+  return (
+    <Image
+      src={`/api/avatar/${avatarPath}`}
+      alt="Profile"
+      width={24}
+      height={24}
+      className="h-6 w-6 rounded-full object-cover"
+      unoptimized
+    />
+  );
+}
 
 export function Navbar() {
   const { data: session } = useSession();
   const [open, setOpen] = useState(false);
+  const [avatarPath, setAvatarPath] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!session) {
+      setAvatarPath(null);
+      return;
+    }
+    function loadAvatar() {
+      fetch("/api/account/me")
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => setAvatarPath(data?.avatarPath ?? null))
+        .catch(() => {});
+    }
+    loadAvatar();
+    window.addEventListener(AVATAR_UPDATED_EVENT, loadAvatar);
+    return () => window.removeEventListener(AVATAR_UPDATED_EVENT, loadAvatar);
+  }, [session]);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[var(--neon-cyan)]/15 bg-background/85 backdrop-blur-xl">
@@ -43,7 +76,7 @@ export function Navbar() {
               aria-label="Dashboard"
               className="flex items-center text-foreground transition hover:text-neon-cyan hover:glow-text-cyan"
             >
-              <CircleUserRound className="h-5 w-5" />
+              <ProfileAvatar avatarPath={avatarPath} />
             </Link>
           ) : (
             <div className="flex items-center gap-2 normal-case">
@@ -72,7 +105,7 @@ export function Navbar() {
               className="flex items-center text-foreground"
               onClick={() => setOpen(false)}
             >
-              <CircleUserRound className="h-5 w-5" />
+              <ProfileAvatar avatarPath={avatarPath} />
             </Link>
           )}
           <button
