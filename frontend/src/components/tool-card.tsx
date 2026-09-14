@@ -30,9 +30,9 @@ export function ToolCard({
     status === "live" ? "Live" : status === "locked" ? "Sign Up" : "Soon";
 
   const content = (
-    <div className={isLive ? "gradient-spin-border" : undefined}>
+    <div className={`h-full ${isLive ? "gradient-spin-border" : ""}`}>
       <Card
-        className={`group relative transition-all duration-300 ${
+        className={`group relative h-full min-h-[13rem] transition-all duration-300 ${
           isClickable
             ? "cursor-pointer hover:-translate-y-1 hover:ring-[var(--neon-cyan)]/40"
             : "cursor-default"
@@ -43,7 +43,7 @@ export function ToolCard({
             isLive ? "border-neon-cyan" : "border-muted-foreground/30"
           }
         />
-        <CardHeader className="space-y-3">
+        <CardHeader className="flex h-full flex-col space-y-3">
           <div className="flex items-start justify-between">
             <div
               className={`flex h-11 w-11 items-center justify-center [clip-path:var(--clip-poly-sm)] ${
@@ -70,5 +70,9 @@ export function ToolCard({
   );
 
   if (!isClickable) return content;
-  return <Link href={isLocked ? "/signup" : href}>{content}</Link>;
+  return (
+    <Link href={isLocked ? "/signup" : href} className="block h-full">
+      {content}
+    </Link>
+  );
 }

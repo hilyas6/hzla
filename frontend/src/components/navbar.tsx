@@ -1,17 +1,24 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { CircleUserRound } from "lucide-react";
+import { CircleUserRound, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function Navbar() {
   const { data: session } = useSession();
+  const [open, setOpen] = useState(false);
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[var(--neon-cyan)]/15 bg-background/85 backdrop-blur-xl">
       <div className="absolute inset-x-0 bottom-[-1px] h-px bg-gradient-to-r from-transparent via-[var(--neon-cyan)]/70 to-transparent" />
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-        <Link href="/" className="group flex items-center gap-2.5">
+        <Link
+          href="/"
+          className="group flex items-center gap-2.5"
+          onClick={() => setOpen(false)}
+        >
           <div className="flex h-8 w-8 items-center justify-center bg-[var(--neon-yellow)] text-[var(--primary-foreground)] shadow-neon-yellow transition-transform [clip-path:var(--clip-poly-sm)] group-hover:scale-105">
             <span className="font-display text-sm font-black tracking-tight">
               Hz
@@ -22,7 +29,7 @@ export function Navbar() {
           </span>
         </Link>
 
-        <nav className="flex items-center gap-6 font-mono text-xs uppercase tracking-widest text-muted-foreground">
+        <nav className="hidden items-center gap-6 font-mono text-xs uppercase tracking-widest text-muted-foreground md:flex">
           <Link
             href="/tools"
             className="transition hover:text-neon-cyan hover:glow-text-cyan"
@@ -62,7 +69,67 @@ export function Navbar() {
             Online
           </span>
         </nav>
+
+        <div className="flex items-center gap-3 md:hidden">
+          {session && (
+            <Link
+              href="/dashboard"
+              aria-label="Dashboard"
+              className="flex items-center text-foreground"
+              onClick={() => setOpen(false)}
+            >
+              <CircleUserRound className="h-5 w-5" />
+            </Link>
+          )}
+          <button
+            type="button"
+            aria-label={open ? "Close menu" : "Open menu"}
+            onClick={() => setOpen((v) => !v)}
+            className="flex h-9 w-9 items-center justify-center text-foreground"
+          >
+            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
       </div>
+
+      {open && (
+        <nav className="border-t border-[var(--neon-cyan)]/15 bg-background/95 px-6 py-4 font-mono text-sm uppercase tracking-widest md:hidden">
+          <div className="flex flex-col gap-4">
+            <Link
+              href="/tools"
+              className="text-muted-foreground transition hover:text-neon-cyan"
+              onClick={() => setOpen(false)}
+            >
+              Tools
+            </Link>
+            <Link
+              href="https://github.com/hilyas6/hzla"
+              target="_blank"
+              className="text-muted-foreground transition hover:text-neon-cyan"
+              onClick={() => setOpen(false)}
+            >
+              GitHub
+            </Link>
+            {!session && (
+              <div className="flex flex-col gap-2 normal-case">
+                <Button
+                  render={<Link href="/login" onClick={() => setOpen(false)} />}
+                  variant="outline"
+                  className="w-full justify-center"
+                >
+                  Log In
+                </Button>
+                <Button
+                  render={<Link href="/signup" onClick={() => setOpen(false)} />}
+                  className="w-full justify-center"
+                >
+                  Sign Up
+                </Button>
+              </div>
+            )}
+          </div>
+        </nav>
+      )}
     </header>
   );
 }
