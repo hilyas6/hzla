@@ -31,7 +31,7 @@ const shareTechMono = Share_Tech_Mono({
 export const metadata: Metadata = {
   title: {
     default: "HZLA",
-    template: "%s | HZLA",
+    template: "%s",
   },
   description:
     "A suite of AI-powered tools for job seekers — detect fake postings, track applications, and more.",
