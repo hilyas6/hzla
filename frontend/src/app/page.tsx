@@ -1,5 +1,5 @@
 import { ToolCard } from "@/components/tool-card";
-import { ShieldCheck, FileText, Wand2, Wrench } from "lucide-react";
+import { ShieldCheck, FileText, Wand2, Wrench, Clipboard } from "lucide-react";
 import { auth } from "@/auth";
 
 const tools = [
@@ -11,6 +11,14 @@ const tools = [
     icon: <ShieldCheck className="h-5 w-5" />,
     status: "live" as const,
     requiresAuth: true,
+  },
+  {
+    title: "HZLAPaste",
+    description:
+      "A native macOS clipboard manager with a history bar, text expansion, and encrypted-at-rest storage.",
+    href: "/tools/hzlapaste",
+    icon: <Clipboard className="h-5 w-5" />,
+    status: "live" as const,
   },
   {
     title: "Application Tracker",
