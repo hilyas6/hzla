@@ -13,7 +13,7 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY}
       RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL}
     volumes:
-      - hzla-avatars-data:/app/public/avatars
+      - hzla-avatars-data:/app/uploads/avatars
     depends_on:
       - postgres
     restart: unless-stopped

@@ -3,8 +3,8 @@ import path from "node:path";
 import { auth } from "@/auth";
 import { pool } from "@/lib/db";
 import { isRateLimited } from "@/lib/rate-limit";
+import { AVATAR_DIR, avatarFilenameFor } from "@/lib/avatar-storage";
 
-const AVATAR_DIR = path.join(process.cwd(), "public", "avatars");
 const DATA_URL_PREFIX = "data:image/jpeg;base64,";
 const MAX_BYTES = 2 * 1024 * 1024; // client resizes before upload; this is just a ceiling
 
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
   }
 
   await mkdir(AVATAR_DIR, { recursive: true });
-  const filename = `${session.user.id}.jpg`;
+  const filename = avatarFilenameFor(session.user.id);
   await writeFile(path.join(AVATAR_DIR, filename), buffer);
 
   await pool.query("UPDATE users SET avatar_path = $1 WHERE id = $2", [
@@ -49,7 +49,7 @@ export async function DELETE() {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  await unlink(path.join(AVATAR_DIR, `${session.user.id}.jpg`)).catch(() => {});
+  await unlink(path.join(AVATAR_DIR, avatarFilenameFor(session.user.id))).catch(() => {});
   await pool.query("UPDATE users SET avatar_path = NULL WHERE id = $1", [
     session.user.id,
   ]);

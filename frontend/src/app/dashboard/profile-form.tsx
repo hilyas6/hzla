@@ -96,7 +96,7 @@ export function ProfileForm({ initialName, initialAvatarPath }: ProfileFormProps
           <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted">
             {avatarPath ? (
               <Image
-                src={`/avatars/${avatarPath}`}
+                src={`/api/avatar/${avatarPath}`}
                 alt="Profile picture"
                 width={64}
                 height={64}
