@@ -4,6 +4,14 @@ import { auth } from "@/auth";
 
 const tools = [
   {
+    title: "HZLAPaste",
+    description:
+      "A native macOS clipboard manager with a history bar, text expansion, and encrypted-at-rest storage.",
+    href: "/tools/hzlapaste",
+    icon: <Clipboard className="h-5 w-5" />,
+    status: "live" as const,
+  },
+  {
     title: "Fake Job Detector",
     description:
       "Paste any job posting and our AI model will analyse it for fraud signals, giving you a risk score with a full explainability report.",
@@ -11,14 +19,6 @@ const tools = [
     icon: <ShieldCheck className="h-5 w-5" />,
     status: "live" as const,
     requiresAuth: true,
-  },
-  {
-    title: "HZLAPaste",
-    description:
-      "A native macOS clipboard manager with a history bar, text expansion, and encrypted-at-rest storage.",
-    href: "/tools/hzlapaste",
-    icon: <Clipboard className="h-5 w-5" />,
-    status: "live" as const,
   },
   {
     title: "Application Tracker",
@@ -62,19 +62,19 @@ export default async function Home() {
         </div>
 
         <h1 className="max-w-3xl font-display text-4xl font-black uppercase tracking-tight sm:text-6xl">
-          AI-powered tools for
+          Smart tools for
           <br />
           <span
-            data-text="smarter job hunting"
+            data-text="getting things done"
             className="glitch glow-text-yellow bg-gradient-to-r from-[var(--neon-yellow)] via-[var(--neon-yellow)] to-[var(--neon-pink)] bg-clip-text text-transparent"
           >
-            smarter job hunting
+            getting things done
           </span>
         </h1>
 
         <p className="mt-6 max-w-xl font-heading text-lg leading-relaxed text-muted-foreground">
-          HZLA is a growing collection of tools that help you spot scams, stay
-          organised, and save time throughout your job search.
+          HZLA is a growing collection of productivity tools — from AI-powered
+          job search safeguards to native apps that save you time every day.
         </p>
       </section>
 

@@ -31,12 +31,6 @@ export function Navbar() {
 
         <nav className="hidden items-center gap-6 font-mono text-xs uppercase tracking-widest text-muted-foreground md:flex">
           <Link
-            href="/tools"
-            className="transition hover:text-neon-cyan hover:glow-text-cyan"
-          >
-            Tools
-          </Link>
-          <Link
             href="https://github.com/hilyas6/hzla"
             target="_blank"
             className="transition hover:text-neon-cyan hover:glow-text-cyan"
@@ -95,13 +89,6 @@ export function Navbar() {
       {open && (
         <nav className="border-t border-[var(--neon-cyan)]/15 bg-background/95 px-6 py-4 font-mono text-sm uppercase tracking-widest md:hidden">
           <div className="flex flex-col gap-4">
-            <Link
-              href="/tools"
-              className="text-muted-foreground transition hover:text-neon-cyan"
-              onClick={() => setOpen(false)}
-            >
-              Tools
-            </Link>
             <Link
               href="https://github.com/hilyas6/hzla"
               target="_blank"
