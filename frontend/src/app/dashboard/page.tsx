@@ -25,13 +25,13 @@ export default async function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h1 className="font-display text-2xl font-black uppercase tracking-wide">
             Dashboard
           </h1>
-          <div className="mt-1.5 flex items-center gap-2 text-muted-foreground">
-            <span>{session?.user?.email}</span>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-muted-foreground">
+            <span className="break-all">{session?.user?.email}</span>
             <Badge variant={isAdmin ? "default" : "secondary"}>
               {session?.user?.role}
             </Badge>
