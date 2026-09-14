@@ -1,8 +1,17 @@
 import bcrypt from "bcryptjs";
+import { z } from "zod";
 import { pool } from "@/lib/db";
 import { isOtpValid } from "@/lib/otp";
 import { sendPasswordChangedEmail } from "@/lib/email";
 import { isRateLimited, clientIp } from "@/lib/rate-limit";
+import { parseRequest } from "@/lib/validate";
+import { logAudit } from "@/lib/audit-log";
+
+const bodySchema = z.object({
+  email: z.string().email("Invalid request."),
+  code: z.string().min(1, "Invalid request."),
+  newPassword: z.string().min(8, "Password must be at least 8 characters."),
+});
 
 export async function POST(request: Request) {
   try {
@@ -13,20 +22,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const { email, code, newPassword } = await request.json();
-    if (
-      typeof email !== "string" ||
-      typeof code !== "string" ||
-      typeof newPassword !== "string"
-    ) {
-      return Response.json({ error: "Invalid request." }, { status: 400 });
-    }
-    if (newPassword.length < 8) {
-      return Response.json(
-        { error: "Password must be at least 8 characters." },
-        { status: 400 }
-      );
-    }
+    const parsed = await parseRequest(request, bodySchema);
+    if ("error" in parsed) return parsed.error;
+    const { email, code, newPassword } = parsed.data;
 
     const normalizedEmail = email.toLowerCase();
     const { rows } = await pool.query(
@@ -51,6 +49,7 @@ export async function POST(request: Request) {
               otp_expires_at = NULL WHERE id = $2`,
       [passwordHash, user.id]
     );
+    await logAudit({ userId: user.id, action: "password_reset", ip: clientIp(request) });
 
     if (user.notify_security_email) {
       try {

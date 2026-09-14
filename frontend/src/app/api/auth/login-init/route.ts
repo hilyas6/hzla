@@ -1,7 +1,14 @@
 import bcrypt from "bcryptjs";
+import { z } from "zod";
 import { pool } from "@/lib/db";
 import { issueOtp } from "@/lib/otp";
 import { isRateLimited, clientIp } from "@/lib/rate-limit";
+import { parseRequest } from "@/lib/validate";
+
+const bodySchema = z.object({
+  email: z.string().email("Email and password are required."),
+  password: z.string().min(1, "Email and password are required."),
+});
 
 export async function POST(request: Request) {
   try {
@@ -12,13 +19,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const { email, password } = await request.json();
-    if (typeof email !== "string" || typeof password !== "string") {
-      return Response.json(
-        { error: "Email and password are required." },
-        { status: 400 }
-      );
-    }
+    const parsed = await parseRequest(request, bodySchema);
+    if ("error" in parsed) return parsed.error;
+    const { email, password } = parsed.data;
 
     const normalizedEmail = email.toLowerCase();
     const { rows } = await pool.query(

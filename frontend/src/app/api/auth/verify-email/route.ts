@@ -1,6 +1,13 @@
+import { z } from "zod";
 import { pool } from "@/lib/db";
 import { isOtpValid } from "@/lib/otp";
 import { isRateLimited, clientIp } from "@/lib/rate-limit";
+import { parseRequest } from "@/lib/validate";
+
+const bodySchema = z.object({
+  email: z.string().email("Invalid request."),
+  code: z.string().min(1, "Invalid request."),
+});
 
 export async function POST(request: Request) {
   try {
@@ -11,10 +18,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const { email, code } = await request.json();
-    if (typeof email !== "string" || typeof code !== "string") {
-      return Response.json({ error: "Invalid request." }, { status: 400 });
-    }
+    const parsed = await parseRequest(request, bodySchema);
+    if ("error" in parsed) return parsed.error;
+    const { email, code } = parsed.data;
 
     const normalizedEmail = email.toLowerCase();
     const { rows } = await pool.query(

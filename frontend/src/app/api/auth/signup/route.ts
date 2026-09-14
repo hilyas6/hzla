@@ -1,7 +1,15 @@
 import bcrypt from "bcryptjs";
+import { z } from "zod";
 import { pool } from "@/lib/db";
 import { issueOtp } from "@/lib/otp";
 import { isRateLimited, clientIp } from "@/lib/rate-limit";
+import { parseRequest } from "@/lib/validate";
+import { logAudit } from "@/lib/audit-log";
+
+const bodySchema = z.object({
+  email: z.string().email("Enter a valid email and a password of at least 8 characters."),
+  password: z.string().min(8, "Enter a valid email and a password of at least 8 characters."),
+});
 
 export async function POST(request: Request) {
   try {
@@ -12,20 +20,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const { email, password } = await request.json();
-
-    if (typeof email !== "string" || typeof password !== "string") {
-      return Response.json(
-        { error: "Email and password are required." },
-        { status: 400 }
-      );
-    }
-    if (!email.includes("@") || password.length < 8) {
-      return Response.json(
-        { error: "Enter a valid email and a password of at least 8 characters." },
-        { status: 400 }
-      );
-    }
+    const parsed = await parseRequest(request, bodySchema);
+    if ("error" in parsed) return parsed.error;
+    const { email, password } = parsed.data;
 
     const normalizedEmail = email.toLowerCase();
     const { rows: existing } = await pool.query(
@@ -46,6 +43,7 @@ export async function POST(request: Request) {
     );
 
     await issueOtp(rows[0].id, normalizedEmail, "signup");
+    await logAudit({ userId: rows[0].id, action: "signup", ip: clientIp(request) });
 
     return Response.json({ ok: true });
   } catch (err: unknown) {

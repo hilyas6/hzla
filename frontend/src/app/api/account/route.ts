@@ -1,7 +1,12 @@
 import bcrypt from "bcryptjs";
+import { z } from "zod";
 import { auth } from "@/auth";
 import { pool } from "@/lib/db";
-import { isRateLimited } from "@/lib/rate-limit";
+import { isRateLimited, clientIp } from "@/lib/rate-limit";
+import { parseRequest } from "@/lib/validate";
+import { logAudit } from "@/lib/audit-log";
+
+const bodySchema = z.object({ password: z.string().min(1, "Password is required.") });
 
 export async function DELETE(request: Request) {
   const session = await auth();
@@ -16,10 +21,9 @@ export async function DELETE(request: Request) {
     );
   }
 
-  const { password } = await request.json();
-  if (typeof password !== "string") {
-    return Response.json({ error: "Password is required." }, { status: 400 });
-  }
+  const parsed = await parseRequest(request, bodySchema);
+  if ("error" in parsed) return parsed.error;
+  const { password } = parsed.data;
 
   const { rows } = await pool.query(
     "SELECT password_hash FROM users WHERE id = $1",
@@ -30,6 +34,7 @@ export async function DELETE(request: Request) {
     return Response.json({ error: "Incorrect password." }, { status: 400 });
   }
 
+  await logAudit({ userId: session.user.id, action: "account_delete", ip: clientIp(request) });
   await pool.query("DELETE FROM users WHERE id = $1", [session.user.id]);
 
   return Response.json({ ok: true });

@@ -12,3 +12,13 @@ CREATE TABLE IF NOT EXISTS users (
   notify_security_email BOOLEAN NOT NULL DEFAULT true,
   avatar_path TEXT
 );
+
+CREATE TABLE IF NOT EXISTS audit_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  action TEXT NOT NULL,
+  target_id UUID,
+  ip TEXT,
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);

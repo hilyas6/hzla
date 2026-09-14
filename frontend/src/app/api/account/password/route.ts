@@ -1,8 +1,16 @@
 import bcrypt from "bcryptjs";
+import { z } from "zod";
 import { auth } from "@/auth";
 import { pool } from "@/lib/db";
 import { sendPasswordChangedEmail } from "@/lib/email";
-import { isRateLimited } from "@/lib/rate-limit";
+import { isRateLimited, clientIp } from "@/lib/rate-limit";
+import { parseRequest } from "@/lib/validate";
+import { logAudit } from "@/lib/audit-log";
+
+const bodySchema = z.object({
+  currentPassword: z.string().min(1, "Invalid request."),
+  newPassword: z.string().min(8, "Password must be at least 8 characters."),
+});
 
 export async function PATCH(request: Request) {
   const session = await auth();
@@ -17,16 +25,9 @@ export async function PATCH(request: Request) {
     );
   }
 
-  const { currentPassword, newPassword } = await request.json();
-  if (typeof currentPassword !== "string" || typeof newPassword !== "string") {
-    return Response.json({ error: "Invalid request." }, { status: 400 });
-  }
-  if (newPassword.length < 8) {
-    return Response.json(
-      { error: "Password must be at least 8 characters." },
-      { status: 400 }
-    );
-  }
+  const parsed = await parseRequest(request, bodySchema);
+  if ("error" in parsed) return parsed.error;
+  const { currentPassword, newPassword } = parsed.data;
 
   const { rows } = await pool.query(
     "SELECT email, password_hash, notify_security_email FROM users WHERE id = $1",
@@ -48,6 +49,7 @@ export async function PATCH(request: Request) {
     passwordHash,
     session.user.id,
   ]);
+  await logAudit({ userId: session.user.id, action: "password_change", ip: clientIp(request) });
 
   if (user.notify_security_email) {
     try {

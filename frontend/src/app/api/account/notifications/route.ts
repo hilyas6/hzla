@@ -1,5 +1,9 @@
+import { z } from "zod";
 import { auth } from "@/auth";
 import { pool } from "@/lib/db";
+import { parseRequest } from "@/lib/validate";
+
+const bodySchema = z.object({ enabled: z.boolean() });
 
 export async function PATCH(request: Request) {
   const session = await auth();
@@ -7,10 +11,9 @@ export async function PATCH(request: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { enabled } = await request.json();
-  if (typeof enabled !== "boolean") {
-    return Response.json({ error: "Invalid request." }, { status: 400 });
-  }
+  const parsed = await parseRequest(request, bodySchema);
+  if ("error" in parsed) return parsed.error;
+  const { enabled } = parsed.data;
 
   await pool.query(
     "UPDATE users SET notify_security_email = $1 WHERE id = $2",

@@ -1,5 +1,9 @@
+import { z } from "zod";
 import { auth } from "@/auth";
 import { pool } from "@/lib/db";
+import { parseRequest } from "@/lib/validate";
+
+const bodySchema = z.object({ name: z.string().max(100, "Invalid name.") });
 
 export async function PATCH(request: Request) {
   const session = await auth();
@@ -7,10 +11,9 @@ export async function PATCH(request: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { name } = await request.json();
-  if (typeof name !== "string" || name.length > 100) {
-    return Response.json({ error: "Invalid name." }, { status: 400 });
-  }
+  const parsed = await parseRequest(request, bodySchema);
+  if ("error" in parsed) return parsed.error;
+  const { name } = parsed.data;
 
   await pool.query("UPDATE users SET name = $1 WHERE id = $2", [
     name.trim() || null,

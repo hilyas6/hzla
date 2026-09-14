@@ -54,7 +54,9 @@ Single Next.js 16 app (App Router) with TypeScript, Tailwind CSS v4, and shadcn/
 - `src/lib/email.ts` — `sendOtpEmail` and `sendPasswordChangedEmail` via Resend's HTTP API (`RESEND_API_KEY`/`RESEND_FROM_EMAIL`), same `fetch`-based pattern as the Groq call in the detector route. The password-changed email is best-effort (wrapped in try/catch at the call site) since a delivery failure shouldn't undo a password change that already succeeded, and only fires when `notify_security_email` is on.
 - `src/lib/rate-limit.ts` — in-memory per-IP (or per-user-id for authenticated routes) sliding window (`isRateLimited`); ponytail-flagged as single-process only, fine for one container.
 - `src/lib/db.ts` — `pg.Pool` singleton (`DATABASE_URL`).
-- `src/lib/schema.sql` — `users` table DDL (id, email, password_hash, role, created_at, otp_code_hash, otp_expires_at, email_verified, two_factor_enabled, name, notify_security_email, avatar_path). Applied via Postgres container init on first boot only — for an already-running DB, migrate manually (see below).
+- `src/lib/schema.sql` — `users` and `audit_log` table DDL (users: id, email, password_hash, role, created_at, otp_code_hash, otp_expires_at, email_verified, two_factor_enabled, name, notify_security_email, avatar_path). Applied via Postgres container init on first boot only — for an already-running DB, migrate manually (see below).
+- `src/lib/validate.ts` — `parseRequest(request, zodSchema)` parses + validates a JSON body in one call, used by every mutating API route instead of hand-rolled `typeof` checks.
+- `src/lib/audit-log.ts` — `logAudit({ userId, action, targetId?, ip?, metadata? })`, a best-effort insert into `audit_log`. Called from every sensitive mutation (login, signup, password change/reset, account deletion, 2FA toggle, admin role change/user delete) — never awaited in a way that can undo the action it's logging.
 - `src/middleware.ts` — requires login for `/dashboard`, `/tools/fake-job-detector`, `/api/detector`, `/api/account/*`; requires `role === 'admin'` for `/api/admin/*`; rate-limits `/api/auth/callback/credentials` (the actual password check) independent of `login-init`, since that endpoint could be hit directly. `/dashboard` is the account hub: admins see `AdminPanel` (user management), everyone gets `ProfileForm` (display name + avatar), `ChangePasswordForm`, `SecuritySettings` (2FA + security-email toggles), and `DeleteAccount` (self-service, password-gated).
 - **Avatars** are files, not DB blobs — `src/lib/resize-image.ts` downscales/crops client-side to a 256x256 JPEG before upload, `api/account/avatar` writes it to `AVATAR_DIR` (`src/lib/avatar-storage.ts`, deterministic `<user-id>.jpg` filename, so re-uploading just overwrites — no orphan cleanup needed). **Deliberately not stored under `public/`**: `output: "standalone"` traces the public directory at build time, so files written there at runtime aren't reliably served without a server restart (hit this in production — a freshly uploaded avatar 404'd until `docker compose restart app`). Storage lives at `uploads/avatars` instead and is served exclusively through `api/avatar/[filename]/route.ts`, which reads the file per-request — Route Handlers have no such build-time tracing, so this can't regress the same way. In Docker, `uploads/avatars` is a named volume (`hzla-avatars-data`, see `docker-compose.yml`) mounted at `/app/uploads/avatars` so uploads survive rebuilds/redeploys.
 
@@ -69,6 +71,16 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_security_email BOOLEAN NOT NUL
 ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_path TEXT;
 -- existing accounts predate email verification — grandfather them in:
 UPDATE users SET email_verified = true;
+
+CREATE TABLE IF NOT EXISTS audit_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  action TEXT NOT NULL,
+  target_id UUID,
+  ip TEXT,
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 ```
 
 ### Components

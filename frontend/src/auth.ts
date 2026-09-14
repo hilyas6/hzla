@@ -3,6 +3,8 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { pool } from "@/lib/db";
 import { isOtpValid } from "@/lib/otp";
+import { clientIp } from "@/lib/rate-limit";
+import { logAudit } from "@/lib/audit-log";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
@@ -14,31 +16,42 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: {},
         otp: {},
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         const email = credentials?.email;
         const password = credentials?.password;
         const otp = credentials?.otp;
+        const ip = clientIp(request);
         if (typeof email !== "string" || typeof password !== "string") {
           return null;
         }
+        const normalizedEmail = email.toLowerCase();
 
         const { rows } = await pool.query(
           `SELECT id, email, password_hash, role, email_verified,
                   two_factor_enabled, otp_code_hash, otp_expires_at
            FROM users WHERE email = $1`,
-          [email.toLowerCase()]
+          [normalizedEmail]
         );
         const user = rows[0];
-        if (!user) return null;
+        if (!user) {
+          await logAudit({ userId: null, action: "login_failure", ip, metadata: { email: normalizedEmail } });
+          return null;
+        }
 
         const validPassword = await bcrypt.compare(password, user.password_hash);
-        if (!validPassword) return null;
+        if (!validPassword) {
+          await logAudit({ userId: user.id, action: "login_failure", ip });
+          return null;
+        }
 
         // Signup verification, login 2FA, and password reset all reuse the
         // same OTP columns (one pending code per account), so this covers
         // whichever step is pending for this account.
         if (!user.email_verified || user.two_factor_enabled) {
-          if (typeof otp !== "string" || !isOtpValid(user, otp)) return null;
+          if (typeof otp !== "string" || !isOtpValid(user, otp)) {
+            await logAudit({ userId: user.id, action: "login_failure", ip, metadata: { reason: "otp" } });
+            return null;
+          }
 
           await pool.query(
             `UPDATE users SET email_verified = true, otp_code_hash = NULL,
@@ -47,6 +60,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           );
         }
 
+        await logAudit({ userId: user.id, action: "login_success", ip });
         return { id: user.id, email: user.email, role: user.role };
       },
     }),
