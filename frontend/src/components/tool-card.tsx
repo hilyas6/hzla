@@ -43,7 +43,7 @@ export function ToolCard({
             isLive ? "border-neon-cyan" : "border-muted-foreground/30"
           }
         />
-        <CardHeader className="flex h-full flex-col space-y-3">
+        <CardHeader className="flex h-full flex-col items-stretch space-y-3">
           <div className="flex items-start justify-between">
             <div
               className={`flex h-11 w-11 items-center justify-center [clip-path:var(--clip-poly-sm)] ${
