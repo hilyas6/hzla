@@ -42,6 +42,7 @@ Single Next.js 16 app (App Router) with TypeScript, Tailwind CSS v4, and shadcn/
 - `src/app/api/account/profile/route.ts` — PATCH `{ name }`, updates the logged-in user's display name.
 - `src/app/api/account/password/route.ts` — PATCH `{ currentPassword, newPassword }`, verifies the current password before updating it. Rate limited per user id.
 - `src/app/api/account/route.ts` — DELETE `{ password }`, self-service account deletion after verifying the password. Rate limited per user id.
+- `src/app/api/account/avatar/route.ts` — POST `{ image }` (a `data:image/jpeg;base64,...` string, already resized client-side to 256x256), writes it to `public/avatars/<user-id>.jpg` and stores the filename in `avatar_path`. DELETE removes the file and clears the column. Rate limited per user id.
 
 ### Auth
 - **Signup requires email verification; login is password-only by default.** `two_factor_enabled` (off by default, toggled from the dashboard) is what makes login also require an emailed code — signup verification, login 2FA, and password reset all reuse the same `otp_code_hash`/`otp_expires_at` columns (one pending code per account) and `src/lib/otp.ts` helpers (`issueOtp`, `isOtpValid`).
@@ -51,8 +52,9 @@ Single Next.js 16 app (App Router) with TypeScript, Tailwind CSS v4, and shadcn/
 - `src/lib/email.ts` — `sendOtpEmail` and `sendPasswordChangedEmail` via Resend's HTTP API (`RESEND_API_KEY`/`RESEND_FROM_EMAIL`), same `fetch`-based pattern as the Groq call in the detector route. The password-changed email is best-effort (wrapped in try/catch at the call site) since a delivery failure shouldn't undo a password change that already succeeded, and only fires when `notify_security_email` is on.
 - `src/lib/rate-limit.ts` — in-memory per-IP (or per-user-id for authenticated routes) sliding window (`isRateLimited`); ponytail-flagged as single-process only, fine for one container.
 - `src/lib/db.ts` — `pg.Pool` singleton (`DATABASE_URL`).
-- `src/lib/schema.sql` — `users` table DDL (id, email, password_hash, role, created_at, otp_code_hash, otp_expires_at, email_verified, two_factor_enabled, name, notify_security_email). Applied via Postgres container init on first boot only — for an already-running DB, migrate manually (see below).
-- `src/middleware.ts` — requires login for `/dashboard`, `/tools/fake-job-detector`, `/api/detector`, `/api/account/*`; requires `role === 'admin'` for `/api/admin/*`; rate-limits `/api/auth/callback/credentials` (the actual password check) independent of `login-init`, since that endpoint could be hit directly. `/dashboard` is the account hub: admins see `AdminPanel` (user management), everyone gets `ProfileForm` (display name), `ChangePasswordForm`, `SecuritySettings` (2FA + security-email toggles), and `DeleteAccount` (self-service, password-gated).
+- `src/lib/schema.sql` — `users` table DDL (id, email, password_hash, role, created_at, otp_code_hash, otp_expires_at, email_verified, two_factor_enabled, name, notify_security_email, avatar_path). Applied via Postgres container init on first boot only — for an already-running DB, migrate manually (see below).
+- `src/middleware.ts` — requires login for `/dashboard`, `/tools/fake-job-detector`, `/api/detector`, `/api/account/*`; requires `role === 'admin'` for `/api/admin/*`; rate-limits `/api/auth/callback/credentials` (the actual password check) independent of `login-init`, since that endpoint could be hit directly. `/dashboard` is the account hub: admins see `AdminPanel` (user management), everyone gets `ProfileForm` (display name + avatar), `ChangePasswordForm`, `SecuritySettings` (2FA + security-email toggles), and `DeleteAccount` (self-service, password-gated).
+- **Avatars** are files, not DB blobs — `src/lib/resize-image.ts` downscales/crops client-side to a 256x256 JPEG before upload, `api/account/avatar` writes it to `public/avatars/` (deterministic `<user-id>.jpg` filename, so re-uploading just overwrites — no orphan cleanup needed) and Next's static file serving handles the rest, no custom serving route. In Docker, `public/avatars` is a named volume (`hzla-avatars-data`, see `docker-compose.yml`) mounted at `/app/public/avatars` so uploads survive rebuilds/redeploys — `frontend/Dockerfile` copies `public/` into the standalone runner image at that same path.
 
 **Migrating an existing deployment's DB** (schema.sql only runs on first container boot):
 ```sql
@@ -62,6 +64,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAU
 ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS name TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_security_email BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_path TEXT;
 -- existing accounts predate email verification — grandfather them in:
 UPDATE users SET email_verified = true;
 ```

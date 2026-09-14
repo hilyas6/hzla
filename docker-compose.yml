@@ -12,6 +12,8 @@ services:
       GROQ_API_KEY: ${GROQ_API_KEY}
       RESEND_API_KEY: ${RESEND_API_KEY}
       RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL}
+    volumes:
+      - hzla-avatars-data:/app/public/avatars
     depends_on:
       - postgres
     restart: unless-stopped
@@ -29,3 +31,4 @@ services:
 
 volumes:
   hzla-postgres-data:
+  hzla-avatars-data:

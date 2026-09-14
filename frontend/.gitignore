@@ -17,6 +17,9 @@
 /.next/
 /out/
 
+# user-uploaded avatars (written at runtime, not build-time assets)
+/public/avatars/
+
 # production
 /build
 

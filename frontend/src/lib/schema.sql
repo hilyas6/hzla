@@ -9,5 +9,6 @@ CREATE TABLE IF NOT EXISTS users (
   email_verified BOOLEAN NOT NULL DEFAULT false,
   two_factor_enabled BOOLEAN NOT NULL DEFAULT false,
   name TEXT,
-  notify_security_email BOOLEAN NOT NULL DEFAULT true
+  notify_security_email BOOLEAN NOT NULL DEFAULT true,
+  avatar_path TEXT
 );

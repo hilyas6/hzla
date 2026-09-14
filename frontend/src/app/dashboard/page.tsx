@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ShieldCheck } from "lucide-react";
+import Image from "next/image";
+import { ShieldCheck, CircleUserRound } from "lucide-react";
 import { auth } from "@/auth";
 import { pool } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,28 +22,45 @@ export default async function DashboardPage() {
   const isAdmin = session?.user?.role === "admin";
 
   const { rows } = await pool.query(
-    "SELECT name, two_factor_enabled, notify_security_email FROM users WHERE id = $1",
+    "SELECT name, avatar_path, two_factor_enabled, notify_security_email FROM users WHERE id = $1",
     [session!.user.id]
   );
   const name: string = rows[0]?.name ?? "";
+  const avatarPath: string | null = rows[0]?.avatar_path ?? null;
   const twoFactorEnabled: boolean = rows[0]?.two_factor_enabled ?? false;
   const notifySecurityEmail: boolean = rows[0]?.notify_security_email ?? true;
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="font-display text-2xl font-black uppercase tracking-wide">
-            Dashboard
-          </h1>
-          {name && (
-            <p className="mt-1 text-sm text-neon-cyan">Welcome back, {name}</p>
-          )}
-          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-muted-foreground">
-            <span className="break-all">{session?.user?.email}</span>
-            <Badge variant={isAdmin ? "default" : "secondary"}>
-              {session?.user?.role}
-            </Badge>
+        <div className="flex min-w-0 items-center gap-4">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted">
+            {avatarPath ? (
+              <Image
+                src={`/avatars/${avatarPath}`}
+                alt="Profile picture"
+                width={56}
+                height={56}
+                className="h-full w-full object-cover"
+                unoptimized
+              />
+            ) : (
+              <CircleUserRound className="h-7 w-7 text-muted-foreground" />
+            )}
+          </div>
+          <div className="min-w-0">
+            <h1 className="font-display text-2xl font-black uppercase tracking-wide">
+              Dashboard
+            </h1>
+            {name && (
+              <p className="mt-1 text-sm text-neon-cyan">Welcome back, {name}</p>
+            )}
+            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-muted-foreground">
+              <span className="break-all">{session?.user?.email}</span>
+              <Badge variant={isAdmin ? "default" : "secondary"}>
+                {session?.user?.role}
+              </Badge>
+            </div>
           </div>
         </div>
         <LogoutButton />
@@ -73,7 +91,7 @@ export default async function DashboardPage() {
           </Card>
         )}
 
-        <ProfileForm initialName={name} />
+        <ProfileForm initialName={name} initialAvatarPath={avatarPath} />
         <ChangePasswordForm />
         <SecuritySettings
           initialTwoFactorEnabled={twoFactorEnabled}
