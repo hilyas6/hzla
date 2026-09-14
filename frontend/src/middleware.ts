@@ -25,7 +25,7 @@ export default auth((req) => {
   }
 
   if (pathname.startsWith("/api/admin")) {
-    if (role !== "admin") {
+    if (role !== "admin" && role !== "owner") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     return NextResponse.next();

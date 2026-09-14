@@ -6,11 +6,13 @@ import { pool } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AdminPanel } from "./admin-panel";
+import { AuditLogPanel } from "./audit-log-panel";
 import { LogoutButton } from "./logout-button";
 import { SecuritySettings } from "./security-settings";
 import { ProfileForm } from "./profile-form";
 import { ChangePasswordForm } from "./change-password-form";
 import { DeleteAccount } from "./delete-account";
+import type { Role } from "@/lib/roles";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -18,7 +20,8 @@ export const metadata: Metadata = {
 
 export default async function DashboardPage() {
   const session = await auth();
-  const isAdmin = session?.user?.role === "admin";
+  const role = session?.user?.role as Role;
+  const canManageUsers = role === "admin" || role === "owner";
 
   const { rows } = await pool.query(
     "SELECT name, avatar_path, two_factor_enabled, notify_security_email FROM users WHERE id = $1",
@@ -41,8 +44,8 @@ export default async function DashboardPage() {
           )}
           <div className="mt-1.5 flex flex-wrap items-center gap-2 text-muted-foreground">
             <span className="break-all">{session?.user?.email}</span>
-            <Badge variant={isAdmin ? "default" : "secondary"}>
-              {session?.user?.role}
+            <Badge variant={role === "user" ? "secondary" : "default"}>
+              {role}
             </Badge>
           </div>
         </div>
@@ -50,9 +53,10 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
-        {isAdmin ? (
-          <div className="sm:col-span-2">
-            <AdminPanel currentUserId={session!.user.id} />
+        {canManageUsers ? (
+          <div className="flex flex-col gap-5 sm:col-span-2">
+            <AdminPanel currentUserId={session!.user.id} currentUserRole={role} />
+            <AuditLogPanel />
           </div>
         ) : (
           <Card>
