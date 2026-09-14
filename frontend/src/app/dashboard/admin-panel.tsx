@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { canManageRole, type Role } from "@/lib/roles";
 
 interface UserRow {
@@ -11,6 +12,7 @@ interface UserRow {
   email: string;
   role: Role;
   created_at: string;
+  is_suspended: boolean;
 }
 
 export function AdminPanel({
@@ -22,6 +24,7 @@ export function AdminPanel({
 }) {
   const [users, setUsers] = useState<UserRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   function loadUsers() {
     fetch("/api/admin/users")
@@ -32,19 +35,27 @@ export function AdminPanel({
 
   useEffect(loadUsers, []);
 
-  async function toggleRole(user: UserRow) {
-    const role = user.role === "admin" ? "user" : "admin";
+  async function patchUser(user: UserRow, body: Record<string, unknown>, failMessage: string) {
     const res = await fetch(`/api/admin/users/${user.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) {
       const data = await res.json();
-      setError(data.error ?? "Failed to change role.");
+      setError(data.error ?? failMessage);
       return;
     }
     loadUsers();
+  }
+
+  function toggleRole(user: UserRow) {
+    const role = user.role === "admin" ? "user" : "admin";
+    patchUser(user, { role }, "Failed to change role.");
+  }
+
+  function toggleSuspended(user: UserRow) {
+    patchUser(user, { suspended: !user.is_suspended }, "Failed to update suspension.");
   }
 
   async function deleteUser(user: UserRow) {
@@ -60,6 +71,10 @@ export function AdminPanel({
     loadUsers();
   }
 
+  const filtered = users?.filter((user) =>
+    user.email.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
     <Card>
       <CardHeader>
@@ -67,11 +82,19 @@ export function AdminPanel({
       </CardHeader>
       <CardContent>
         {error && <p className="mb-3 text-sm text-destructive">{error}</p>}
+        <Input
+          placeholder="Search by email..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="mb-3"
+        />
         {!users ? (
           <p className="text-sm text-muted-foreground">Loading...</p>
+        ) : filtered!.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No matching users.</p>
         ) : (
           <div className="flex flex-col gap-2">
-            {users.map((user) => {
+            {filtered!.map((user) => {
               const canManage =
                 user.id !== currentUserId && canManageRole(currentUserRole, user.role);
               return (
@@ -84,11 +107,15 @@ export function AdminPanel({
                     <Badge variant={user.role === "user" ? "secondary" : "default"}>
                       {user.role}
                     </Badge>
+                    {user.is_suspended && <Badge variant="destructive">suspended</Badge>}
                   </div>
                   {canManage && (
                     <div className="flex items-center gap-2">
                       <Button variant="outline" size="xs" onClick={() => toggleRole(user)}>
                         Make {user.role === "admin" ? "User" : "Admin"}
+                      </Button>
+                      <Button variant="outline" size="xs" onClick={() => toggleSuspended(user)}>
+                        {user.is_suspended ? "Unsuspend" : "Suspend"}
                       </Button>
                       <Button variant="destructive" size="xs" onClick={() => deleteUser(user)}>
                         Delete

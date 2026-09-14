@@ -149,6 +149,13 @@ export function SignupClient() {
           <Button type="submit" disabled={loading}>
             {loading ? "Creating account..." : "Sign Up"}
           </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => signIn("google", { callbackUrl: "/" })}
+          >
+            Continue with Google
+          </Button>
           <p className="text-sm text-muted-foreground">
             Already have an account?{" "}
             <Link href="/login" className="text-neon-cyan hover:underline">

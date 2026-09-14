@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AdminPanel } from "./admin-panel";
 import { AuditLogPanel } from "./audit-log-panel";
+import { ActivityPanel } from "./activity-panel";
+import { SessionsPanel } from "./sessions-panel";
 import { LogoutButton } from "./logout-button";
 import { SecuritySettings } from "./security-settings";
 import { ProfileForm } from "./profile-form";
@@ -24,13 +26,16 @@ export default async function DashboardPage() {
   const canManageUsers = role === "admin" || role === "owner";
 
   const { rows } = await pool.query(
-    "SELECT name, avatar_path, two_factor_enabled, notify_security_email FROM users WHERE id = $1",
+    `SELECT name, avatar_path, two_factor_enabled, notify_security_email,
+            password_hash IS NOT NULL AS has_password
+     FROM users WHERE id = $1`,
     [session!.user.id]
   );
   const name: string = rows[0]?.name ?? "";
   const avatarPath: string | null = rows[0]?.avatar_path ?? null;
   const twoFactorEnabled: boolean = rows[0]?.two_factor_enabled ?? false;
   const notifySecurityEmail: boolean = rows[0]?.notify_security_email ?? true;
+  const hasPassword: boolean = rows[0]?.has_password ?? true;
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
@@ -51,6 +56,12 @@ export default async function DashboardPage() {
         </div>
         <LogoutButton />
       </div>
+
+      {!name && (
+        <div className="mb-5 border border-dashed border-neon-cyan/40 px-4 py-3 text-sm text-neon-cyan">
+          Welcome! Add your name and a profile picture below to finish setting up your account.
+        </div>
+      )}
 
       <div className="grid gap-5 sm:grid-cols-2">
         {canManageUsers ? (
@@ -79,14 +90,16 @@ export default async function DashboardPage() {
         )}
 
         <ProfileForm initialName={name} initialAvatarPath={avatarPath} />
-        <ChangePasswordForm />
+        {hasPassword && <ChangePasswordForm />}
         <SecuritySettings
           initialTwoFactorEnabled={twoFactorEnabled}
           initialNotifySecurityEmail={notifySecurityEmail}
         />
+        <ActivityPanel />
+        <SessionsPanel currentSessionId={session!.user.sessionId} />
 
         <div className="sm:col-span-2">
-          <DeleteAccount />
+          <DeleteAccount hasPassword={hasPassword} />
         </div>
       </div>
     </div>

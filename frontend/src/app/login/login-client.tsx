@@ -18,6 +18,7 @@ export function LoginClient() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [otp, setOtp] = useState("");
+  const [remember, setRemember] = useState(true);
   const [step, setStep] = useState<Step>("credentials");
   const [otpHint, setOtpHint] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +29,7 @@ export function LoginClient() {
       email,
       password,
       otp,
+      remember: remember ? "true" : "false",
       redirect: false,
     });
     if (result?.error) {
@@ -177,9 +179,25 @@ export function LoginClient() {
               </button>
             </div>
           </div>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+              className="h-4 w-4"
+            />
+            Remember me
+          </label>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button type="submit" disabled={loading}>
             {loading ? "Checking..." : "Log In"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => signIn("google", { callbackUrl: "/" })}
+          >
+            Continue with Google
           </Button>
           <p className="text-sm text-muted-foreground">
             No account?{" "}

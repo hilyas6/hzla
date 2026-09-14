@@ -25,7 +25,7 @@ export async function POST(request: Request) {
 
     const normalizedEmail = email.toLowerCase();
     const { rows } = await pool.query(
-      "SELECT id, password_hash, email_verified, two_factor_enabled FROM users WHERE email = $1",
+      "SELECT id, password_hash, email_verified, two_factor_enabled, is_suspended FROM users WHERE email = $1",
       [normalizedEmail]
     );
     const user = rows[0];
@@ -33,6 +33,13 @@ export async function POST(request: Request) {
       return Response.json(
         { error: "Invalid email or password." },
         { status: 401 }
+      );
+    }
+
+    if (user.is_suspended) {
+      return Response.json(
+        { error: "This account has been suspended. Contact support if you think this is a mistake." },
+        { status: 403 }
       );
     }
 

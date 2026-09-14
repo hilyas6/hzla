@@ -4,9 +4,12 @@ import { pool } from "@/lib/db";
 import { clientIp } from "@/lib/rate-limit";
 import { parseRequest } from "@/lib/validate";
 import { logAudit } from "@/lib/audit-log";
-import { canSetRole, canDeleteUser, type Role } from "@/lib/roles";
+import { canManageRole, canSetRole, canDeleteUser, type Role } from "@/lib/roles";
 
-const roleSchema = z.object({ role: z.enum(["user", "admin"]) });
+const bodySchema = z.union([
+  z.object({ role: z.enum(["user", "admin"]) }),
+  z.object({ suspended: z.boolean() }),
+]);
 
 export async function PATCH(
   request: Request,
@@ -19,31 +22,51 @@ export async function PATCH(
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
   if (session.user.id === id) {
-    return Response.json({ error: "You can't change your own role." }, { status: 400 });
+    return Response.json({ error: "You can't change your own account." }, { status: 400 });
   }
 
-  const parsed = await parseRequest(request, roleSchema);
+  const parsed = await parseRequest(request, bodySchema);
   if ("error" in parsed) return parsed.error;
-  const { role } = parsed.data;
 
   const { rows } = await pool.query("SELECT role FROM users WHERE id = $1", [id]);
   const target = rows[0];
   if (!target) return Response.json({ error: "User not found." }, { status: 404 });
+  const targetRole = target.role as Role;
 
-  if (!canSetRole(actorRole, target.role as Role, role)) {
+  if ("role" in parsed.data) {
+    const { role } = parsed.data;
+    if (!canSetRole(actorRole, targetRole, role)) {
+      return Response.json(
+        { error: "You don't have permission to make that change." },
+        { status: 403 }
+      );
+    }
+
+    await pool.query("UPDATE users SET role = $1 WHERE id = $2", [role, id]);
+    await logAudit({
+      userId: session.user.id,
+      action: "admin_role_change",
+      targetId: id,
+      ip: clientIp(request),
+      metadata: { role },
+    });
+    return Response.json({ ok: true });
+  }
+
+  const { suspended } = parsed.data;
+  if (!canManageRole(actorRole, targetRole)) {
     return Response.json(
       { error: "You don't have permission to make that change." },
       { status: 403 }
     );
   }
 
-  await pool.query("UPDATE users SET role = $1 WHERE id = $2", [role, id]);
+  await pool.query("UPDATE users SET is_suspended = $1 WHERE id = $2", [suspended, id]);
   await logAudit({
     userId: session.user.id,
-    action: "admin_role_change",
+    action: suspended ? "user_suspended" : "user_unsuspended",
     targetId: id,
     ip: clientIp(request),
-    metadata: { role },
   });
   return Response.json({ ok: true });
 }

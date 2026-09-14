@@ -13,7 +13,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 
-export function DeleteAccount() {
+export function DeleteAccount({ hasPassword }: { hasPassword: boolean }) {
   const [open, setOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +28,7 @@ export function DeleteAccount() {
     const res = await fetch("/api/account", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password }),
+      body: JSON.stringify(hasPassword ? { password } : {}),
     });
 
     if (!res.ok) {
@@ -50,18 +50,26 @@ export function DeleteAccount() {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        <a
+          href="/api/account/export"
+          className="mb-4 inline-block text-sm text-neon-cyan hover:underline"
+        >
+          Download my data
+        </a>
         {open ? (
           <form onSubmit={handleDelete} className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="delete-password">Confirm your password</Label>
-              <Input
-                id="delete-password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
+            {hasPassword && (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="delete-password">Confirm your password</Label>
+                <Input
+                  id="delete-password"
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+            )}
             {error && <p className="text-sm text-destructive">{error}</p>}
             <div className="flex items-center gap-3">
               <Button type="submit" variant="destructive" size="sm" disabled={deleting}>

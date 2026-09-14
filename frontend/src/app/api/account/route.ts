@@ -6,7 +6,7 @@ import { isRateLimited, clientIp } from "@/lib/rate-limit";
 import { parseRequest } from "@/lib/validate";
 import { logAudit } from "@/lib/audit-log";
 
-const bodySchema = z.object({ password: z.string().min(1, "Password is required.") });
+const bodySchema = z.object({ password: z.string().optional() });
 
 export async function DELETE(request: Request) {
   const session = await auth();
@@ -30,8 +30,15 @@ export async function DELETE(request: Request) {
     [session.user.id]
   );
   const user = rows[0];
-  if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+  if (!user) {
     return Response.json({ error: "Incorrect password." }, { status: 400 });
+  }
+  // Google-only accounts have no password_hash to check against — the
+  // active session is the only credential they have.
+  if (user.password_hash) {
+    if (!password || !(await bcrypt.compare(password, user.password_hash))) {
+      return Response.json({ error: "Incorrect password." }, { status: 400 });
+    }
   }
 
   await logAudit({ userId: session.user.id, action: "account_delete", ip: clientIp(request) });

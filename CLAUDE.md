@@ -29,20 +29,24 @@ Single Next.js 16 app (App Router) with TypeScript, Tailwind CSS v4, and shadcn/
 
 ### API Routes
 - `src/app/api/detector/route.ts` — POST endpoint that calls Groq (Llama 3.3 70B) to analyse job postings. Returns structured JSON: verdict, risk score, fraud/legit signals, categorised patterns, structural checklist, plain English summary. The API key is in `.env.local` (not committed).
-- `src/app/api/auth/[...nextauth]/route.ts` — Auth.js (NextAuth v5) handlers. Credentials (email/password) login, JWT sessions.
+- `src/app/api/auth/[...nextauth]/route.ts` — Auth.js (NextAuth v5) handlers. Credentials (email/password) and Google OAuth login, JWT sessions.
 - `src/app/api/auth/signup/route.ts` — Creates a user (hashed password via bcryptjs), emails a verification code via `issueOtp`. Rate limited per IP.
 - `src/app/api/auth/verify-email/route.ts` — Confirms the signup code, sets `email_verified = true`. Rate limited per IP.
 - `src/app/api/auth/login-init/route.ts` — Verifies email+password, then tells the client what's next: `"verify-email"` (unverified account, code just sent), `"otp"` (2FA account, code just sent), or `"none"` (go straight to `signIn`). Rate limited per IP.
 - `src/app/api/auth/forgot-password/route.ts` — POST `{ email }`, issues an OTP if the account exists. Always returns `{ ok: true }` either way (no account-existence leak). Rate limited per IP.
 - `src/app/api/auth/reset-password/route.ts` — POST `{ email, code, newPassword }`, validates the OTP and sets a new `password_hash`. Rate limited per IP.
 - `src/app/api/admin/users/route.ts` — GET, lists all users (admin/owner only).
-- `src/app/api/admin/users/[id]/route.ts` — PATCH (change role), DELETE (remove user). Neither ever succeeds against your own id or against an `owner` target. Otherwise gated by `src/lib/roles.ts`'s `canSetRole`/`canDeleteUser`: owner can act on anyone (except the owner and self); admin can only act on plain `user` accounts and can only ever promote to `admin` — never demote (one-way, so once a user is admin, only the owner can undo it).
+- `src/app/api/admin/users/[id]/route.ts` — PATCH `{ role }` or `{ suspended }`, DELETE (remove user). Neither ever succeeds against your own id or against an `owner` target. Otherwise gated by `src/lib/roles.ts`'s `canSetRole`/`canManageRole`/`canDeleteUser`: owner can act on anyone (except the owner and self); admin can only act on plain `user` accounts, and can only ever promote to `admin` — never demote (one-way, so once a user is admin, only the owner can undo it). Suspending shares the same scope rules as deleting.
 - `src/app/api/admin/audit-log/route.ts` — GET, latest 200 `audit_log` rows joined against `users` for the actor/target email (admin/owner only).
+- `src/app/api/account/activity/route.ts` — GET, the logged-in user's own last 20 `audit_log` rows (login history, password changes, etc.) — same table as the admin audit log, scoped to `user_id = session.user.id`.
+- `src/app/api/account/export/route.ts` — GET, dumps the logged-in user's profile + full activity history as a downloadable JSON file (`Content-Disposition: attachment`) — basic data-portability/GDPR self-service.
+- `src/app/api/account/sessions/route.ts` — GET, the logged-in user's own rows from `sessions` (device/IP/last-seen). DELETE with no body revokes every session but the one making the request ("log out all other devices").
+- `src/app/api/account/sessions/[id]/route.ts` — DELETE, revokes one session by id (scoped to `user_id = session.user.id`, so you can't revoke someone else's).
 - `src/app/api/account/two-factor/route.ts` — PATCH, toggles `two_factor_enabled` on the logged-in user's own account.
 - `src/app/api/account/notifications/route.ts` — PATCH, toggles `notify_security_email` (emailed on password change) on the logged-in user's own account.
 - `src/app/api/account/profile/route.ts` — PATCH `{ name }`, updates the logged-in user's display name.
-- `src/app/api/account/password/route.ts` — PATCH `{ currentPassword, newPassword }`, verifies the current password before updating it. Rate limited per user id.
-- `src/app/api/account/route.ts` — DELETE `{ password }`, self-service account deletion after verifying the password. Rate limited per user id.
+- `src/app/api/account/password/route.ts` — PATCH `{ currentPassword, newPassword }`, verifies the current password before updating it. Rate limited per user id. 400s cleanly if the account has no `password_hash` (Google-only) instead of crashing on `bcrypt.compare(_, null)`.
+- `src/app/api/account/route.ts` — DELETE `{ password }`, self-service account deletion after verifying the password. Rate limited per user id. Google-only accounts (no `password_hash`) skip the password check — the active session is the only credential they have.
 - `src/app/api/account/avatar/route.ts` — POST `{ image }` (a `data:image/jpeg;base64,...` string, already resized client-side to 256x256), writes it to `AVATAR_DIR` (see below) and stores the filename in `avatar_path`. DELETE removes the file and clears the column. Rate limited per user id.
 - `src/app/api/avatar/[filename]/route.ts` — GET, streams an uploaded avatar back from `AVATAR_DIR`. Public (not behind auth) since avatars are meant to be viewable. Deliberately a Route Handler rather than a static file under `public/` — see the standalone-build note below.
 - `src/app/api/account/me/route.ts` — GET, returns `{ avatarPath }` for the logged-in user. Exists purely so `Navbar` (a client component rendered from the root layout) can show the avatar without the root layout itself calling `auth()` — that would force every page in the app to render dynamically instead of statically (verified: adding `auth()` to `layout.tsx` flipped `/`, `/login`, `/signup`, etc. from `○ Static` to `ƒ Dynamic` in the build output). `Navbar` fetches this once on mount and again whenever `window` receives the `hzla:avatar-updated` event (dispatched by `ProfileForm` after an avatar upload/removal — see `src/lib/avatar-events.ts`).
@@ -52,16 +56,19 @@ Three tiers, stored as plain text in `users.role`: `user` (default), `admin`, `o
 
 ### Auth
 - **Signup requires email verification; login is password-only by default.** `two_factor_enabled` (off by default, toggled from the dashboard) is what makes login also require an emailed code — signup verification, login 2FA, and password reset all reuse the same `otp_code_hash`/`otp_expires_at` columns (one pending code per account) and `src/lib/otp.ts` helpers (`issueOtp`, `isOtpValid`).
-- `src/auth.ts` — Auth.js config: Credentials provider always checks email+password; only demands a valid `otp` when `!user.email_verified || user.two_factor_enabled`. `id`/`role` carried through the JWT/session.
+- `src/auth.ts` — Auth.js config: Credentials provider always checks email+password; only demands a valid `otp` when `!user.email_verified || user.two_factor_enabled`. `id`/`role`/`sessionId` carried through the JWT/session.
 - Login is two-step client side (`src/app/login/login-client.tsx`): submit email/password → `/api/auth/login-init` decides if a code is needed → if so, submit it alongside the original credentials via `signIn("credentials", ...)`. Signup (`src/app/signup/signup-client.tsx`) verifies the code inline, then signs in automatically.
 - **Forgot password** (`src/app/forgot-password/forgot-password-client.tsx`) is the same two-step shape: email → `/api/auth/forgot-password` issues a code → code + new password → `/api/auth/reset-password` validates it and updates `password_hash`.
+- **Google OAuth** — bare `Google` provider in `auth.ts`'s `providers` array (Auth.js v5 auto-wires it from `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` env vars, no explicit config needed). There's no Auth.js DB adapter wired up, so the `signIn` callback does its own find-or-create against our `users` table keyed by email: existing email → reuse that row's id/role; no match → INSERT a new row with `email_verified = true` and `password_hash = NULL`. This means `users.password_hash` is nullable — every route that does `bcrypt.compare(_, user.password_hash)` (`account/password`, `account` DELETE, `auth.ts` `authorize`) has to check for that first. `ChangePasswordForm` and the password field in `DeleteAccount` are hidden client-side for Google-only accounts (`dashboard/page.tsx` passes down `password_hash IS NOT NULL AS has_password`).
+- **Remember me + device sessions** (`src/lib/sessions.ts`, `sessions` table) — JWT strategy has no server-side session store, so `sessions` is our own: one row per login (`user_id`, `user_agent`, `ip`, `remember`, `expires_at`, `last_seen_at`), its id carried as `sessionId` in the JWT/session (see `next-auth.d.ts`). "Remember me" unchecked → `expires_at = now() + 1 day`; checked → `+ 30 days` (the checkbox in `login-client.tsx` posts `remember: "true"/"false"` as a Credentials field — Auth.js serializes credentials as form-encoded strings, never real booleans, so it's compared as a string, not `=== true`). `middleware.ts` re-validates `sessionId` against this table (and refreshes `last_seen_at`) on every authenticated request — this is also what makes a revoked device or an `is_suspended` ban take effect immediately instead of waiting out the JWT's own (up to 30-day) expiry. `events.signOut` in `auth.ts` deletes the row on explicit logout. Google logins get a session row too, created in the `jwt` callback since OAuth callbacks don't get a raw `Request` to read IP/user-agent from (unlike credentials' `authorize`) — those two columns are just `NULL` for OAuth sessions. Self-service UI: `dashboard/sessions-panel.tsx` + `/api/account/sessions[/[id]]`.
 - `src/lib/email.ts` — `sendOtpEmail` and `sendPasswordChangedEmail` via Resend's HTTP API (`RESEND_API_KEY`/`RESEND_FROM_EMAIL`), same `fetch`-based pattern as the Groq call in the detector route. The password-changed email is best-effort (wrapped in try/catch at the call site) since a delivery failure shouldn't undo a password change that already succeeded, and only fires when `notify_security_email` is on.
 - `src/lib/rate-limit.ts` — in-memory per-IP (or per-user-id for authenticated routes) sliding window (`isRateLimited`); ponytail-flagged as single-process only, fine for one container.
 - `src/lib/db.ts` — `pg.Pool` singleton (`DATABASE_URL`).
-- `src/lib/schema.sql` — `users` and `audit_log` table DDL (users: id, email, password_hash, role, created_at, otp_code_hash, otp_expires_at, email_verified, two_factor_enabled, name, notify_security_email, avatar_path). Applied via Postgres container init on first boot only — for an already-running DB, migrate manually (see below).
+- `src/lib/schema.sql` — `users`, `audit_log`, and `sessions` table DDL (users: id, email, password_hash [nullable], role, created_at, otp_code_hash, otp_expires_at, email_verified, two_factor_enabled, name, notify_security_email, avatar_path, is_suspended). Applied via Postgres container init on first boot only — for an already-running DB, migrate manually (see below).
+- **Suspension/ban**: `users.is_suspended` blocks login (checked in both `login-init` for a clear client-side message and `auth.ts`'s `authorize` as the actual enforcement) and, since JWT sessions have no server-side revocation, is also re-checked on every authenticated request in `middleware.ts` alongside the session-validity check above — otherwise a ban wouldn't take effect until the existing session's token expired.
 - `src/lib/validate.ts` — `parseRequest(request, zodSchema)` parses + validates a JSON body in one call, used by every mutating API route instead of hand-rolled `typeof` checks.
 - `src/lib/audit-log.ts` — `logAudit({ userId, action, targetId?, ip?, metadata? })`, a best-effort insert into `audit_log`. Called from every sensitive mutation (login, signup, password change/reset, account deletion, 2FA toggle, admin role change/user delete) — never awaited in a way that can undo the action it's logging.
-- `src/middleware.ts` — requires login for `/dashboard`, `/tools/fake-job-detector`, `/api/detector`, `/api/account/*`; requires `role === 'admin' || role === 'owner'` for `/api/admin/*`; rate-limits `/api/auth/callback/credentials` (the actual password check) independent of `login-init`, since that endpoint could be hit directly. `/dashboard` is the account hub: admin/owner see `AdminPanel` (user management) and `AuditLogPanel`, everyone gets `ProfileForm` (display name + avatar), `ChangePasswordForm`, `SecuritySettings` (2FA + security-email toggles), and `DeleteAccount` (self-service, password-gated).
+- `src/middleware.ts` — requires login for `/dashboard`, `/tools/fake-job-detector`, `/api/detector`, `/api/account/*`; requires `role === 'admin' || role === 'owner'` for `/api/admin/*`; rate-limits `/api/auth/callback/credentials` (the actual password check) independent of `login-init`, since that endpoint could be hit directly. `/dashboard` is the account hub: admin/owner see `AdminPanel` (user management, with search-by-email and suspend/unsuspend) and `AuditLogPanel`, everyone gets `ProfileForm` (display name + avatar, with a first-login nudge banner if the name is still empty), `ChangePasswordForm` (hidden for Google-only accounts), `SecuritySettings` (2FA + security-email toggles), `ActivityPanel` (own login/security history), `SessionsPanel` (own devices, with per-device and "log out everywhere else" revoke), and `DeleteAccount` (self-service, password-gated where a password exists, also hosts the "download my data" export link).
 - **Avatars** are files, not DB blobs — `src/lib/resize-image.ts` downscales/crops client-side to a 256x256 JPEG before upload, `api/account/avatar` writes it to `AVATAR_DIR` (`src/lib/avatar-storage.ts`, deterministic `<user-id>.jpg` filename, so re-uploading just overwrites — no orphan cleanup needed). **Deliberately not stored under `public/`**: `output: "standalone"` traces the public directory at build time, so files written there at runtime aren't reliably served without a server restart (hit this in production — a freshly uploaded avatar 404'd until `docker compose restart app`). Storage lives at `uploads/avatars` instead and is served exclusively through `api/avatar/[filename]/route.ts`, which reads the file per-request — Route Handlers have no such build-time tracing, so this can't regress the same way. In Docker, `uploads/avatars` is a named volume (`hzla-avatars-data`, see `docker-compose.yml`) mounted at `/app/uploads/avatars` so uploads survive rebuilds/redeploys.
 
 **Migrating an existing deployment's DB** (schema.sql only runs on first container boot):
@@ -73,6 +80,8 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN NOT NULL D
 ALTER TABLE users ADD COLUMN IF NOT EXISTS name TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_security_email BOOLEAN NOT NULL DEFAULT true;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_path TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_suspended BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
 -- existing accounts predate email verification — grandfather them in:
 UPDATE users SET email_verified = true;
 -- one-time: promote the site owner. There is only ever one 'owner' row.
@@ -86,6 +95,17 @@ CREATE TABLE IF NOT EXISTS audit_log (
   ip TEXT,
   metadata JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_agent TEXT,
+  ip TEXT,
+  remember BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_seen_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at TIMESTAMPTZ NOT NULL
 );
 ```
 
@@ -102,6 +122,7 @@ CREATE TABLE IF NOT EXISTS audit_log (
 - `AUTH_URL` — public URL of the site
 - `RESEND_API_KEY` — Resend API key, used to send login 2FA emails
 - `RESEND_FROM_EMAIL` — verified sender, e.g. `HZLA <noreply@hzla.uk>`
+- `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` — Google OAuth client, from console.cloud.google.com. Authorized redirect URI: `{AUTH_URL}/api/auth/callback/google`. Naming is Auth.js v5's convention (`AUTH_<PROVIDER>_ID`/`_SECRET`) — it auto-wires these into the bare `Google` provider in `auth.ts`, no explicit `clientId`/`clientSecret` needed there.
 
 Set locally in `frontend/.env.local` (see `frontend/.env.example`), or via `.env` at the repo root for `docker compose`.
 

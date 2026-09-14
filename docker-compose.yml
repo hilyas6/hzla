@@ -12,6 +12,8 @@ services:
       GROQ_API_KEY: ${GROQ_API_KEY}
       RESEND_API_KEY: ${RESEND_API_KEY}
       RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL}
+      AUTH_GOOGLE_ID: ${AUTH_GOOGLE_ID}
+      AUTH_GOOGLE_SECRET: ${AUTH_GOOGLE_SECRET}
     volumes:
       - hzla-avatars-data:/app/uploads/avatars
     depends_on:

@@ -34,7 +34,13 @@ export async function PATCH(request: Request) {
     [session.user.id]
   );
   const user = rows[0];
-  if (!user || !(await bcrypt.compare(currentPassword, user.password_hash))) {
+  if (!user || !user.password_hash) {
+    return Response.json(
+      { error: "This account signed in with Google and has no password to change." },
+      { status: 400 }
+    );
+  }
+  if (!(await bcrypt.compare(currentPassword, user.password_hash))) {
     return Response.json({ error: "Current password is incorrect." }, { status: 400 });
   }
   if (await bcrypt.compare(newPassword, user.password_hash)) {
