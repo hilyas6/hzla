@@ -142,17 +142,19 @@ function Kbd({ children }: { children: React.ReactNode }) {
 export default function HzlaPaste() {
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
-      <div className="mb-2 flex items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center bg-[color-mix(in_srgb,var(--neon-cyan)_14%,transparent)] text-neon-cyan shadow-neon-cyan [clip-path:var(--clip-poly-sm)]">
-          <Clipboard className="h-5 w-5" />
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center bg-[color-mix(in_srgb,var(--neon-cyan)_14%,transparent)] text-neon-cyan shadow-neon-cyan [clip-path:var(--clip-poly-sm)]">
+            <Clipboard className="h-5 w-5" />
+          </div>
+          <h1 className="font-display text-2xl font-black uppercase tracking-wide sm:text-3xl">
+            HZLAPaste
+          </h1>
         </div>
-        <h1 className="font-display text-2xl font-black uppercase tracking-wide sm:text-3xl">
-          HZLAPaste
-        </h1>
-      </div>
-      <div className="mb-2 flex flex-wrap items-center gap-2">
-        <Badge>Live</Badge>
-        <Badge variant="secondary">macOS only</Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge>Live</Badge>
+          <Badge variant="secondary">macOS only</Badge>
+        </div>
       </div>
       <p className="text-muted-foreground mb-6 max-w-2xl">
         A native macOS clipboard manager: a Raycast/Paste-style history bar,
