@@ -159,11 +159,15 @@ export default function HzlaPaste() {
       </p>
 
       <div className="mb-10 flex flex-wrap gap-3">
-        <Button render={<a href={DMG_URL} />}>
+        <Button className="w-full justify-center sm:w-64" render={<a href={DMG_URL} />}>
           <Download className="h-4 w-4" />
-          Download HZLAPaste.dmg
+          Download .dmg
         </Button>
-        <Button variant="outline" render={<a href={REPO} target="_blank" rel="noreferrer" />}>
+        <Button
+          variant="outline"
+          className="w-full justify-center sm:w-64"
+          render={<a href={REPO} target="_blank" rel="noreferrer" />}
+        >
           <ExternalLink className="h-4 w-4" />
           View source on GitHub
         </Button>
