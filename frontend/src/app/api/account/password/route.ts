@@ -36,6 +36,12 @@ export async function PATCH(request: Request) {
   if (!user || !(await bcrypt.compare(currentPassword, user.password_hash))) {
     return Response.json({ error: "Current password is incorrect." }, { status: 400 });
   }
+  if (await bcrypt.compare(newPassword, user.password_hash)) {
+    return Response.json(
+      { error: "New password must be different from your current password." },
+      { status: 400 }
+    );
+  }
 
   const passwordHash = await bcrypt.hash(newPassword, 10);
   await pool.query("UPDATE users SET password_hash = $1 WHERE id = $2", [

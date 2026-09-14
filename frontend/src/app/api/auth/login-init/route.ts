@@ -34,12 +34,12 @@ export async function POST(request: Request) {
     }
 
     if (!user.email_verified) {
-      await issueOtp(user.id, normalizedEmail);
+      await issueOtp(user.id, normalizedEmail, "signup");
       return Response.json({ step: "verify-email" });
     }
 
     if (user.two_factor_enabled) {
-      await issueOtp(user.id, normalizedEmail);
+      await issueOtp(user.id, normalizedEmail, "login");
       return Response.json({ step: "otp" });
     }
 

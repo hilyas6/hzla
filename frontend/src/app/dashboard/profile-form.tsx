@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +14,7 @@ import {
 } from "@/components/ui/card";
 
 export function ProfileForm({ initialName }: { initialName: string }) {
+  const router = useRouter();
   const [name, setName] = useState(initialName);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -30,6 +32,7 @@ export function ProfileForm({ initialName }: { initialName: string }) {
 
     setSaving(false);
     setMessage(res.ok ? "Saved." : "Failed to save.");
+    if (res.ok) router.refresh();
   }
 
   return (

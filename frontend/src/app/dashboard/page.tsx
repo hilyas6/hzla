@@ -33,8 +33,11 @@ export default async function DashboardPage() {
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <h1 className="font-display text-2xl font-black uppercase tracking-wide">
-            {name || "Dashboard"}
+            Dashboard
           </h1>
+          {name && (
+            <p className="mt-1 text-sm text-neon-cyan">Welcome back, {name}</p>
+          )}
           <div className="mt-1.5 flex flex-wrap items-center gap-2 text-muted-foreground">
             <span className="break-all">{session?.user?.email}</span>
             <Badge variant={isAdmin ? "default" : "secondary"}>

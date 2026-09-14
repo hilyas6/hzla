@@ -30,13 +30,19 @@ export async function POST(request: Request) {
 
     const normalizedEmail = email.toLowerCase();
     const { rows } = await pool.query(
-      `SELECT id, otp_code_hash, otp_expires_at, notify_security_email
+      `SELECT id, password_hash, otp_code_hash, otp_expires_at, notify_security_email
        FROM users WHERE email = $1`,
       [normalizedEmail]
     );
     const user = rows[0];
     if (!user || !isOtpValid(user, code)) {
       return Response.json({ error: "Invalid or expired code." }, { status: 400 });
+    }
+    if (await bcrypt.compare(newPassword, user.password_hash)) {
+      return Response.json(
+        { error: "New password must be different from your current password." },
+        { status: 400 }
+      );
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 10);

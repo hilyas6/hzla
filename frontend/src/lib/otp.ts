@@ -1,8 +1,12 @@
 import crypto from "node:crypto";
 import { pool } from "./db";
-import { sendOtpEmail } from "./email";
+import { sendOtpEmail, type OtpPurpose } from "./email";
 
-export async function issueOtp(userId: string, email: string) {
+export async function issueOtp(
+  userId: string,
+  email: string,
+  purpose: OtpPurpose = "login"
+) {
   const code = crypto.randomInt(100000, 1000000).toString();
   const codeHash = crypto.createHash("sha256").update(code).digest("hex");
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
@@ -11,7 +15,7 @@ export async function issueOtp(userId: string, email: string) {
     "UPDATE users SET otp_code_hash = $1, otp_expires_at = $2 WHERE id = $3",
     [codeHash, expiresAt, userId]
   );
-  await sendOtpEmail(email, code);
+  await sendOtpEmail(email, code, purpose);
 }
 
 export function isOtpValid(

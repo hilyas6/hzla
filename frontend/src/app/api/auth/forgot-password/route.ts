@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     // Always respond ok, whether or not the account exists — otherwise this
     // endpoint becomes a way to check which emails are registered.
     if (user) {
-      await issueOtp(user.id, normalizedEmail);
+      await issueOtp(user.id, normalizedEmail, "reset");
     }
 
     return Response.json({ ok: true });

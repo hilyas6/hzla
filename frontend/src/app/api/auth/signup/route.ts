@@ -45,7 +45,7 @@ export async function POST(request: Request) {
       [normalizedEmail, passwordHash]
     );
 
-    await issueOtp(rows[0].id, normalizedEmail);
+    await issueOtp(rows[0].id, normalizedEmail, "signup");
 
     return Response.json({ ok: true });
   } catch (err: unknown) {
