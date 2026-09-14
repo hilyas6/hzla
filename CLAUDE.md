@@ -33,19 +33,26 @@ Single Next.js 16 app (App Router) with TypeScript, Tailwind CSS v4, and shadcn/
 - `src/app/api/auth/signup/route.ts` — Creates a user (hashed password via bcryptjs), emails a verification code via `issueOtp`. Rate limited per IP.
 - `src/app/api/auth/verify-email/route.ts` — Confirms the signup code, sets `email_verified = true`. Rate limited per IP.
 - `src/app/api/auth/login-init/route.ts` — Verifies email+password, then tells the client what's next: `"verify-email"` (unverified account, code just sent), `"otp"` (2FA account, code just sent), or `"none"` (go straight to `signIn`). Rate limited per IP.
+- `src/app/api/auth/forgot-password/route.ts` — POST `{ email }`, issues an OTP if the account exists. Always returns `{ ok: true }` either way (no account-existence leak). Rate limited per IP.
+- `src/app/api/auth/reset-password/route.ts` — POST `{ email, code, newPassword }`, validates the OTP and sets a new `password_hash`. Rate limited per IP.
 - `src/app/api/admin/users/route.ts` — GET, lists all users (admin only).
 - `src/app/api/admin/users/[id]/route.ts` — PATCH (change role), DELETE (remove user); admin only, can't act on your own account for delete.
 - `src/app/api/account/two-factor/route.ts` — PATCH, toggles `two_factor_enabled` on the logged-in user's own account.
+- `src/app/api/account/notifications/route.ts` — PATCH, toggles `notify_security_email` (emailed on password change) on the logged-in user's own account.
+- `src/app/api/account/profile/route.ts` — PATCH `{ name }`, updates the logged-in user's display name.
+- `src/app/api/account/password/route.ts` — PATCH `{ currentPassword, newPassword }`, verifies the current password before updating it. Rate limited per user id.
+- `src/app/api/account/route.ts` — DELETE `{ password }`, self-service account deletion after verifying the password. Rate limited per user id.
 
 ### Auth
-- **Signup requires email verification; login is password-only by default.** `two_factor_enabled` (off by default, toggled from the dashboard) is what makes login also require an emailed code — both cases reuse the same `otp_code_hash`/`otp_expires_at` columns and `src/lib/otp.ts` helpers (`issueOtp`, `isOtpValid`).
+- **Signup requires email verification; login is password-only by default.** `two_factor_enabled` (off by default, toggled from the dashboard) is what makes login also require an emailed code — signup verification, login 2FA, and password reset all reuse the same `otp_code_hash`/`otp_expires_at` columns (one pending code per account) and `src/lib/otp.ts` helpers (`issueOtp`, `isOtpValid`).
 - `src/auth.ts` — Auth.js config: Credentials provider always checks email+password; only demands a valid `otp` when `!user.email_verified || user.two_factor_enabled`. `id`/`role` carried through the JWT/session.
 - Login is two-step client side (`src/app/login/login-client.tsx`): submit email/password → `/api/auth/login-init` decides if a code is needed → if so, submit it alongside the original credentials via `signIn("credentials", ...)`. Signup (`src/app/signup/signup-client.tsx`) verifies the code inline, then signs in automatically.
-- `src/lib/email.ts` — `sendOtpEmail` via Resend's HTTP API (`RESEND_API_KEY`/`RESEND_FROM_EMAIL`), same `fetch`-based pattern as the Groq call in the detector route.
-- `src/lib/rate-limit.ts` — in-memory per-IP sliding window (`isRateLimited`); ponytail-flagged as single-process only, fine for one container.
+- **Forgot password** (`src/app/forgot-password/forgot-password-client.tsx`) is the same two-step shape: email → `/api/auth/forgot-password` issues a code → code + new password → `/api/auth/reset-password` validates it and updates `password_hash`.
+- `src/lib/email.ts` — `sendOtpEmail` and `sendPasswordChangedEmail` via Resend's HTTP API (`RESEND_API_KEY`/`RESEND_FROM_EMAIL`), same `fetch`-based pattern as the Groq call in the detector route. The password-changed email is best-effort (wrapped in try/catch at the call site) since a delivery failure shouldn't undo a password change that already succeeded, and only fires when `notify_security_email` is on.
+- `src/lib/rate-limit.ts` — in-memory per-IP (or per-user-id for authenticated routes) sliding window (`isRateLimited`); ponytail-flagged as single-process only, fine for one container.
 - `src/lib/db.ts` — `pg.Pool` singleton (`DATABASE_URL`).
-- `src/lib/schema.sql` — `users` table DDL (id, email, password_hash, role, created_at, otp_code_hash, otp_expires_at, email_verified, two_factor_enabled). Applied via Postgres container init on first boot only — for an already-running DB, migrate manually (see below).
-- `src/middleware.ts` — requires login for `/dashboard`, `/tools/fake-job-detector`, `/api/detector`, `/api/account/*`; requires `role === 'admin'` for `/api/admin/*`; rate-limits `/api/auth/callback/credentials` (the actual password check) independent of `login-init`, since that endpoint could be hit directly. `/dashboard` branches by role — admins see `AdminPanel` (user management), everyone gets the `TwoFactorToggle`.
+- `src/lib/schema.sql` — `users` table DDL (id, email, password_hash, role, created_at, otp_code_hash, otp_expires_at, email_verified, two_factor_enabled, name, notify_security_email). Applied via Postgres container init on first boot only — for an already-running DB, migrate manually (see below).
+- `src/middleware.ts` — requires login for `/dashboard`, `/tools/fake-job-detector`, `/api/detector`, `/api/account/*`; requires `role === 'admin'` for `/api/admin/*`; rate-limits `/api/auth/callback/credentials` (the actual password check) independent of `login-init`, since that endpoint could be hit directly. `/dashboard` is the account hub: admins see `AdminPanel` (user management), everyone gets `ProfileForm` (display name), `ChangePasswordForm`, `SecuritySettings` (2FA + security-email toggles), and `DeleteAccount` (self-service, password-gated).
 
 **Migrating an existing deployment's DB** (schema.sql only runs on first container boot):
 ```sql
@@ -53,6 +60,8 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_code_hash TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS otp_expires_at TIMESTAMPTZ;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS name TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_security_email BOOLEAN NOT NULL DEFAULT true;
 -- existing accounts predate email verification — grandfather them in:
 UPDATE users SET email_verified = true;
 ```

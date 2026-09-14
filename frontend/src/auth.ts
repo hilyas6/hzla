@@ -34,8 +34,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const validPassword = await bcrypt.compare(password, user.password_hash);
         if (!validPassword) return null;
 
-        // Both signup verification and login 2FA reuse the same OTP columns,
-        // so this covers whichever step is pending for this account.
+        // Signup verification, login 2FA, and password reset all reuse the
+        // same OTP columns (one pending code per account), so this covers
+        // whichever step is pending for this account.
         if (!user.email_verified || user.two_factor_enabled) {
           if (typeof otp !== "string" || !isOtpValid(user, otp)) return null;
 

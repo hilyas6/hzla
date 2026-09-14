@@ -7,7 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AdminPanel } from "./admin-panel";
 import { LogoutButton } from "./logout-button";
-import { TwoFactorToggle } from "./two-factor-toggle";
+import { SecuritySettings } from "./security-settings";
+import { ProfileForm } from "./profile-form";
+import { ChangePasswordForm } from "./change-password-form";
+import { DeleteAccount } from "./delete-account";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -18,17 +21,19 @@ export default async function DashboardPage() {
   const isAdmin = session?.user?.role === "admin";
 
   const { rows } = await pool.query(
-    "SELECT two_factor_enabled FROM users WHERE id = $1",
+    "SELECT name, two_factor_enabled, notify_security_email FROM users WHERE id = $1",
     [session!.user.id]
   );
+  const name: string = rows[0]?.name ?? "";
   const twoFactorEnabled: boolean = rows[0]?.two_factor_enabled ?? false;
+  const notifySecurityEmail: boolean = rows[0]?.notify_security_email ?? true;
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <h1 className="font-display text-2xl font-black uppercase tracking-wide">
-            Dashboard
+            {name || "Dashboard"}
           </h1>
           <div className="mt-1.5 flex flex-wrap items-center gap-2 text-muted-foreground">
             <span className="break-all">{session?.user?.email}</span>
@@ -65,7 +70,16 @@ export default async function DashboardPage() {
           </Card>
         )}
 
-        <TwoFactorToggle initialEnabled={twoFactorEnabled} />
+        <ProfileForm initialName={name} />
+        <ChangePasswordForm />
+        <SecuritySettings
+          initialTwoFactorEnabled={twoFactorEnabled}
+          initialNotifySecurityEmail={notifySecurityEmail}
+        />
+
+        <div className="sm:col-span-2">
+          <DeleteAccount />
+        </div>
       </div>
     </div>
   );
